@@ -48,13 +48,27 @@ pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
 }
 
 int emptyChild(pcb_t *p) {
+    return list_empty(&p->p_child) ? 1 : 0;
 }
 
 void insertChild(pcb_t *prnt, pcb_t *p) {
+    p->p_parent = prnt;
+    list_add(&p->p_sib, &prnt->p_child);
 }
 
 pcb_t *removeChild(pcb_t *p) {
+    if (!list_empty(&p->p_child)){
+        pcb_PTR tempPcb = container_of(p->p_child.next, pcb_t, p_list);
+        list_del(p->p_child.next);
+        return tempPcb;
+    }
+    else
+        return NULL;
 }
 
 pcb_t *outChild(pcb_t *p) {
+    if (p->p_parent != NULL){
+        list_del(&p->p_sib);
+        p->p_parent = NULL;
+    }
 }
