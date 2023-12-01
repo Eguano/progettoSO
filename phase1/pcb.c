@@ -30,21 +30,47 @@ pcb_t *allocPcb() {
 }
 
 void mkEmptyProcQ(struct list_head *head) {
+    INIT_LIST_HEAD(head);
 }
 
 int emptyProcQ(struct list_head *head) {
+    return list_empty(head) ? 1 : 0;
 }
 
 void insertProcQ(struct list_head *head, pcb_t *p) {
+    list_add_tail(list_next(&p->p_sib), head);
 }
 
 pcb_t *headProcQ(struct list_head *head) {
+    if(list_empty(head))
+        return NULL;
+    else
+        return container_of(list_next(head), pcb_t, p_list);
 }
 
 pcb_t *removeProcQ(struct list_head *head) {
+    if(list_empty(head))
+        return NULL;
+    else {
+        pcb_PTR temp = container_of(list_next(head), pcb_t, p_list);
+        list_del(list_next(head));
+        return temp;
+    }
 }
 
 pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
+    if(list_next(list_next(&p->p_sib)) == NULL) 
+        return NULL;
+    else {
+        pcb_PTR temp = container_of(list_next(&p->p_sib), pcb_t, p_list);
+        struct list_head* pos;
+        list_for_each(pos, head) {
+            pcb_PTR temp = container_of(pos, pcb_t, p_list);
+            if(p == temp) {
+                list_del(pos);
+                return temp;            }
+        }
+    }
 }
 
 int emptyChild(pcb_t *p) {
