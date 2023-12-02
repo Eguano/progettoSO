@@ -34,43 +34,39 @@ void mkEmptyProcQ(struct list_head *head) {
 }
 
 int emptyProcQ(struct list_head *head) {
-    return list_empty(head) ? 1 : 0;
+    return list_empty(head);
 }
 
 void insertProcQ(struct list_head *head, pcb_t *p) {
-    list_add_tail(list_next(&p->p_sib), head);
+    list_add_tail(&p->p_list, head);
 }
 
 pcb_t *headProcQ(struct list_head *head) {
-    if(list_empty(head))
+    if(emptyProcQ(head))
         return NULL;
     else
-        return container_of(list_next(head), pcb_t, p_list);
+        return container_of(head->next, pcb_t, p_list);
 }
 
 pcb_t *removeProcQ(struct list_head *head) {
-    if(list_empty(head))
+    if(emptyProcQ(head))
         return NULL;
     else {
-        pcb_PTR temp = container_of(list_next(head), pcb_t, p_list);
-        list_del(list_next(head));
+        pcb_PTR temp = headProcQ(head);
+        list_del(&temp->p_list);
         return temp;
     }
 }
 
 pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
-    if(list_next(list_next(&p->p_sib)) == NULL) 
-        return NULL;
-    else {
-        pcb_PTR temp = container_of(list_next(&p->p_sib), pcb_t, p_list);
-        struct list_head* pos;
-        list_for_each(pos, head) {
-            pcb_PTR temp = container_of(pos, pcb_t, p_list);
-            if(p == temp) {
-                list_del(pos);
-                return temp;            }
+    pcb_PTR temp;
+    list_for_each_entry(temp, head, p_list) {
+        if(temp == p) {
+            list_del(&p->p_list);
+            return p;
         }
     }
+    return NULL;
 }
 
 int emptyChild(pcb_t *p) {
