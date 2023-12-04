@@ -75,7 +75,7 @@ int emptyChild(pcb_t *p) {
 
 void insertChild(pcb_t *prnt, pcb_t *p) {
     p->p_parent = prnt;
-    list_add(&p->p_sib, &prnt->p_child);
+    list_add_tail(&p->p_sib, &prnt->p_child);
 }
 
 pcb_t *removeChild(pcb_t *p) {
@@ -92,5 +92,8 @@ pcb_t *outChild(pcb_t *p) {
     if (p->p_parent != NULL){
         list_del(&p->p_sib);
         p->p_parent = NULL;
+        return p;
     }
+    else
+        return NULL;
 }
