@@ -5,7 +5,7 @@ LIST_HEAD(pcbFree_h);
 static int next_pid = 1;
 
 /**
- * @brief 
+ * @brief Inserisce tutti i processi nella lista dei processi liberi. (chiamata solo all'inizio dell'eseczuione)
  * 
  */
 void initPcbs() {
@@ -15,7 +15,7 @@ void initPcbs() {
 }
 
 /**
- * @brief 
+ * @brief Inserisce il processo puntato da p nella lista dei processi liberi.
  * 
  * @param p 
  */
@@ -24,7 +24,7 @@ void freePcb(pcb_t *p) {
 }
 
 /**
- * @brief 
+ * @brief Se sono disponibili processi liberi, inizializza i valori di uno e lo rimuove dalla lista dei processi liberi.
  * 
  * @return pcb_t* 
  */
@@ -120,7 +120,7 @@ pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
 }
 
 /**
- * @brief 
+ * @brief True se il processo puntato da p ha dei figli, false altrimenti.
  * 
  * @param p 
  * @return int 
@@ -130,7 +130,7 @@ int emptyChild(pcb_t *p) {
 }
 
 /**
- * @brief 
+ * @brief Inserisce il processo puntato da p come figlio del processo puntato da prnt.
  * 
  * @param prnt 
  * @param p 
@@ -141,7 +141,7 @@ void insertChild(pcb_t *prnt, pcb_t *p) {
 }
 
 /**
- * @brief 
+ * @brief Rimuove il primo figlio del processo puntato da p. Ritorna NULL se il processo non ha figli.
  * 
  * @param p 
  * @return pcb_t* 
@@ -157,7 +157,7 @@ pcb_t *removeChild(pcb_t *p) {
 }
 
 /**
- * @brief 
+ * @brief Rimuove il processo puntato da p dalla lista dei figli del processo padre. Ritorna NULL se il processo non ha un padre.
  * 
  * @param p 
  * @return pcb_t* 
