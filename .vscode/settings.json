@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "pcb.h": "c",
+    "const.h": "c"
+  }
+}

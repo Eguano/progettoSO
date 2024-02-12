@@ -39,6 +39,10 @@ pcb_t *allocPcb() {
         INIT_LIST_HEAD(&tempPcb->p_sib);
         INIT_LIST_HEAD(&tempPcb->msg_inbox);
         tempPcb->p_parent = NULL;
+        tempPcb->p_time = 0;
+        tempPcb->p_supportStruct = NULL;
+        tempPcb->p_pid = next_pid;
+        next_pid++;
         return tempPcb;
     }
 }
