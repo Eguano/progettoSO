@@ -1,6 +1,7 @@
 {
   "files.associations": {
     "pcb.h": "c",
-    "const.h": "c"
+    "const.h": "c",
+    "init.h": "c"
   }
 }

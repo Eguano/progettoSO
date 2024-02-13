@@ -3,8 +3,7 @@
 void initialize() {
   // Pass Up Vector for Processor 0
   passupvector_t *passUpVec = (passupvector_t *) PASSUPVECTOR;
-  // TODO: decommentare una volta finita la section 3
-  // passUpVec->tlb_refill_handler = (memaddr) uTLB_RefillHandler;
+  passUpVec->tlb_refill_handler = (memaddr) uTLB_RefillHandler;
   passUpVec->tlb_refill_stackPtr = (memaddr) KERNELSTACK;
   // TODO: aggiungere nome della funzione di gestione eccezioni
   // passUpVec->exception_handler = (memaddr) ...
@@ -23,9 +22,8 @@ void initialize() {
     mkEmptyProcQ(&externalBlocked[i]->p_list);
   }
   mkEmptyProcQ(&pseudoclockBlocked->p_list);
-  // TODO: decommentare dopo numero di terminal device
-  /* for (int i = 0; i < ???; i++) {
+  for (int i = 0; i < MAXTERMINALDEV; i++) {
     mkEmptyProcQ(&terminalBlocked[0][i]->p_list);
     mkEmptyProcQ(&terminalBlocked[1][i]->p_list);
-  } */
+  }
 }

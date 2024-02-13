@@ -2,12 +2,15 @@
   Performs Nucleus initialization
 */
 
-#ifndef INIT_C
-#define INIT_C
+#ifndef INIT_H
+#define INIT_H
+#define MAXTERMINALDEV 8
 
 #include "../headers/const.h"
 #include "../headers/types.h"
 #include "../phase1/headers/pcb.h"
+
+extern void uTLB_RefillHandler();
 
 // number of started processes not yet terminated
 unsigned int processCount;
@@ -22,7 +25,7 @@ pcb_PTR externalBlocked[SEMDEVLEN - 1];
 // pseudo-clock list
 pcb_PTR pseudoclockBlocked;
 // list of blocked PCBs for terminal device
-// TODO: pcb_PTR terminalBlocked[2][???];
+pcb_PTR terminalBlocked[2][MAXTERMINALDEV];
 
 void initialize();
 

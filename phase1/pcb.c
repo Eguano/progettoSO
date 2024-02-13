@@ -43,6 +43,7 @@ pcb_t *allocPcb() {
         tempPcb->p_supportStruct = NULL;
         tempPcb->p_pid = next_pid;
         next_pid++;
+        tempPcb->p_s.status = ALLOFF;
         return tempPcb;
     }
 }
