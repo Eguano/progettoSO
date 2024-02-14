@@ -4,6 +4,7 @@
 
 #include "init.h"
 
+extern void SSIHandler();
 extern void test();
 
 /**
@@ -22,8 +23,7 @@ void main() {
   pcb_PTR firstPcb = allocPcb();
   firstPcb->p_s.status = IEPON | IMON;
   RAMTOP(firstPcb->p_s.reg_sp);
-  // TODO: aggiungere nome funzione SSI_function_entry_point
-  // firstPcb->p_s.pc_epc = firstPcb->p_s.reg_t9 = (memaddr) ...
+  firstPcb->p_s.pc_epc = firstPcb->p_s.reg_t9 = (memaddr) SSIHandler;
   insertProcQ(&readyQueue->p_list, firstPcb);
   processCount++;
 
