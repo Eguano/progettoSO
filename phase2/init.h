@@ -4,13 +4,14 @@
 
 #ifndef INIT_H
 #define INIT_H
+
 #define MAXTERMINALDEV 8
 
 #include "../headers/const.h"
 #include "../headers/types.h"
-#include "../phase1/headers/pcb.h"
 
 extern void uTLB_RefillHandler();
+extern void exceptionHandler();
 
 // number of started processes not yet terminated
 unsigned int processCount;
