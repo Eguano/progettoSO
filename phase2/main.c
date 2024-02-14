@@ -6,6 +6,11 @@
 
 extern void test();
 
+/**
+ * Entry point del sistema operativo.
+ * <p>Inizializza il nucleo, istanzia il processo SSI e test
+ * e carica l'Interval Timer
+ */
 void main() {
   // nucleus initialization
   initialize();

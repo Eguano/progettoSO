@@ -20,11 +20,11 @@ unsigned int waitingCount;
 pcb_PTR currentProcess;
 // queue of PCBs in ready state
 pcb_PTR readyQueue;
-// list of blocked PCBs for external device
+// list of blocked PCBs for every external device
 pcb_PTR externalBlocked[SEMDEVLEN - 1];
 // pseudo-clock list
 pcb_PTR pseudoclockBlocked;
-// list of blocked PCBs for terminal device
+// list of blocked PCBs for every terminal device
 pcb_PTR terminalBlocked[2][MAXTERMINALDEV];
 
 void initialize();

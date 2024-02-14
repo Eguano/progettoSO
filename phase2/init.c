@@ -1,5 +1,9 @@
 #include "init.h"
 
+/**
+ * Inizializza il PassUp Vector, le strutture di pcb e msg e
+ * le variabili globali
+ */
 void initialize() {
   // Pass Up Vector for Processor 0
   passupvector_t *passUpVec = (passupvector_t *) PASSUPVECTOR;
