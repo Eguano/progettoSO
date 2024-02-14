@@ -2,8 +2,8 @@
   Process scheduler
 */
 
-#ifndef SCHEDULER.H
-#define SCHEDULER.H
+#ifndef SCHEDULER_H
+#define SCHEDULER_H
 
 #include <umps/libumps.h>
 #include "init.h"
