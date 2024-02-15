@@ -19,12 +19,42 @@ void uTLB_RefillHandler() {
  * 
  */
 void exceptionHandler() {
-    switch(currentState->cause) {
-        // IO Interrupt (0-7 interruput lines)
-        // Syscalls
-        // Breakpoint calls
-        // Page faults
-        // Program traps (address error, bus error, reserved instruction, coprocessor unusable, arithmetic overflow)
-    }
-    
+    switch((currentState->cause & GETEXECCODE >> 2)) {
+        case 0:
+            // External Device Interrupt
+            break;
+        case 1 ... 3:
+            // TLB Exception
+            break;
+        case 4 ... 7:
+            // Program Traps p1: Address and Bus Error Exception
+            break;
+        case 8: 
+            syscallHandler();
+		    break;
+        case 9 ... 12:
+            // Breakpoint Calls, Program Traps p2
+        default: 
+            // Wrong ExcCode
+            break;
+	}
 }
+
+
+
+/*
+    Number - Code - Description
+    0 - Int - External Device Interrupt
+    1 - Mod - TLB-Modification Exception
+    2 - TLBL - TLB Invalid Exception: on a Load instr. or instruction fetch
+    3 - TLBS - TLB Invalid Exception: on a Store instr.
+    4 - AdEL - Address Error Exception: on a Load or instruction fetch
+    5 - AdES - Address Error Exception: on a Store instr.
+    6 - IBE - Bus Error Exception: on an instruction fetch
+    7 - DBE - Bus Error Exception: on a Load/Store data access
+    8 - Sys - Syscall Exception
+    9 - Bp - Breakpoint Exception
+    10 - RI - Reserved Instruction Exception
+    11 - CpU - Coprocessor Unusable Exception
+    12 - OV - Arithmetic Overflow Exception
+*/
