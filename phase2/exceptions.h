@@ -7,10 +7,11 @@
 
 #include "../headers/const.h"
 #include "../headers/types.h"
-
+#include "syscall.h"
 
 void uTLB_RefillHandler();
-
 void exceptionHandler();
+
+extern state_t *currentState;
 
 #endif
