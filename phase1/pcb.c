@@ -125,7 +125,7 @@ pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
 }
 
 /**
- * @brief True se il processo puntato da p ha dei figli, false altrimenti.
+ * @brief True se il processo puntato da p non ha figli, false altrimenti.
  * 
  * @param p 
  * @return int 
@@ -175,4 +175,14 @@ pcb_t *outChild(pcb_t *p) {
     }
     else
         return NULL;
+}
+
+/**
+ * Ritorna il primo processo figlio di p
+ * 
+ * @param p puntatore al processo padre
+ * @return puntatore al primo processo figlio
+ */
+pcb_t *getFirstChild(pcb_t *p) {
+    return container_of(p->p_child.next, pcb_t, p_list);
 }

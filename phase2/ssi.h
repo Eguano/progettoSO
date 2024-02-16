@@ -9,6 +9,7 @@
 #include "../headers/const.h"
 #include "../headers/types.h"
 #include "init.h"
+#include "../phase1/headers/pcb.h"
 
 void SSIRequest(pcb_t* sender, int service, void* arg);
 
