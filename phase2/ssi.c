@@ -10,6 +10,7 @@
 void SSIRequest(pcb_t* sender, int service, void* arg) {
   ssi_payload_t payload = {service, arg};
   SYSCALL(SENDMESSAGE, ssiAddress, &payload, 0);
+  // se non è OK il processo ssi non esiste -> emergency shutdown
   if (sender->p_s.reg_v0 != OK) PANIC();
   SYSCALL(RECEIVEMESSAGE, ssiAddress, sender, 0);
 }
@@ -21,8 +22,11 @@ void SSIHandler() {
   while (TRUE) {
     ssi_payload_t payload;
     SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, &payload, 0);
+    // processo mittente
     pcb_PTR sender = currentProcess->p_s.reg_v0;
+    // risposta da inviare al sender
     unsigned int response = NULL;
+    // esecuzione del servizio richiesto
     if (payload.service_code == CREATEPROCESS) {
       // creare un nuovo processo
       response = createProcess((ssi_create_process_PTR) payload.arg, sender);
@@ -34,12 +38,17 @@ void SSIHandler() {
         terminateProcess(payload.arg);
       }
     } else if (payload.service_code == DOIO) {
-      // TODO: fare sezione 7.3
+      // eseguire un input o output
+      // TODO: fare sezione 7.3, necessari interrupt
     } else if (payload.service_code == GETTIME) {
       // restituire accumulated processor time
       response = &(sender->p_time);
     } else if (payload.service_code == CLOCKWAIT) {
-      // TODO: fare sezione 7.5
+      // bloccare il processo per lo pseudoclock
+      insertProcQ(&pseudoclockBlocked->p_list, sender);
+      waitingCount++;
+      /* TODO: quando un processo è in attesa della receive, dove viene bloccato?
+      quando gli rispondo dove finisce? verificare se è da eliminare da altre liste*/
     } else if (payload.service_code == GETSUPPORTPTR) {
       // restituire la struttura di supporto
       response = sender->p_supportStruct;
@@ -89,7 +98,7 @@ unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
  * @param proc processo da eliminare
  */
 void terminateProcess(pcb_t *proc) {
-  proc = outChild(proc);
+  outChild(proc);
   if (!emptyChild(proc)) terminateProgeny(proc);
   destroyProcess(proc);
 }
