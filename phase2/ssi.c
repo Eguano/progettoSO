@@ -9,10 +9,9 @@
  */
 void SSIRequest(pcb_t* sender, int service, void* arg) {
   ssi_payload_t payload = {service, arg};
-  // TODO: gestire indirizzo del processo SSI
-  // SYSCALL(SENDMESSAGE, (memaddr) ssi, &payload, 0);
+  SYSCALL(SENDMESSAGE, ssiAddress, &payload, 0);
   if (sender->p_s.reg_v0 != OK) PANIC();
-  // SYSCALL(RECEIVEMESSAGE, (memaddr) ssi, sender, 0);
+  SYSCALL(RECEIVEMESSAGE, ssiAddress, sender, 0);
 }
 
 /**
@@ -23,10 +22,10 @@ void SSIHandler() {
     ssi_payload_t payload;
     SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, &payload, 0);
     pcb_PTR sender = currentProcess->p_s.reg_v0;
-    unsigned int result = NULL;
+    unsigned int response = NULL;
     if (payload.service_code == CREATEPROCESS) {
       // creare un nuovo processo
-      result = createProcess((ssi_create_process_PTR) payload.arg, sender);
+      response = createProcess((ssi_create_process_PTR) payload.arg, sender);
     } else if (payload.service_code == TERMPROCESS) {
       // eliminare un processo esistente
       if (payload.arg == NULL) {
@@ -38,28 +37,28 @@ void SSIHandler() {
       // TODO: fare sezione 7.3
     } else if (payload.service_code == GETTIME) {
       // restituire accumulated processor time
-      result = &(sender->p_time);
+      response = &(sender->p_time);
     } else if (payload.service_code == CLOCKWAIT) {
       // TODO: fare sezione 7.5
     } else if (payload.service_code == GETSUPPORTPTR) {
       // restituire la struttura di supporto
-      result = sender->p_supportStruct;
+      response = sender->p_supportStruct;
     } else if (payload.service_code == GETPROCESSID) {
       // restituire il pid del sender o del suo genitore
       if (payload.arg == 0) {
-        result = sender->p_pid;
+        response = sender->p_pid;
       } else {
         if (sender->p_parent == NULL) {
-          result = 0;
+          response = 0;
         } else {
-          result = sender->p_parent->p_pid;
+          response = sender->p_parent->p_pid;
         }
       }
     } else {
       // codice non esiste, terminare processo richiedente e tutta la sua progenie
       terminateProcess(sender);
     }
-    SYSCALL(SENDMESSAGE, sender, result, 0);
+    SYSCALL(SENDMESSAGE, sender, response, 0);
   }
 }
 

@@ -26,6 +26,7 @@ void main() {
   firstPcb->p_s.pc_epc = firstPcb->p_s.reg_t9 = (memaddr) SSIHandler;
   insertProcQ(&readyQueue->p_list, firstPcb);
   processCount++;
+  ssiAddress = &firstPcb;
 
   // istantiate a second process
   pcb_PTR secondPcb = allocPcb();
