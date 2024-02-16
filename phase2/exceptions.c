@@ -19,23 +19,29 @@ void uTLB_RefillHandler() {
  * 
  */
 void exceptionHandler() {
-    switch((currentState->cause & GETEXECCODE >> 2)) {
+    switch((currentState->cause & GETEXECCODE) >> CAUSESHIFT) {
         case 0:
             // External Device Interrupt
+            interruptHandler();
             break;
         case 1 ... 3:
             // TLB Exception
+            passUpOrDie(PGFAULTEXCEPT);
             break;
         case 4 ... 7:
             // Program Traps p1: Address and Bus Error Exception
+            passUpOrDie(GENERALEXCEPT);
             break;
         case 8: 
+            // Syscalls
             syscallHandler();
 		    break;
         case 9 ... 12:
             // Breakpoint Calls, Program Traps p2
+            passUpOrDie(GENERALEXCEPT);
         default: 
             // Wrong ExcCode
+            passUpOrDie(GENERALEXCEPT);
             break;
 	}
 }
