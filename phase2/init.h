@@ -27,6 +27,8 @@ pcb_PTR externalBlocked[SEMDEVLEN - 1];
 pcb_PTR pseudoclockBlocked;
 // list of blocked PCBs for every terminal device
 pcb_PTR terminalBlocked[2][MAXTERMINALDEV];
+// address of SSI pcb TODO: possibile kernel security leak
+memaddr ssiAddress;
 
 void initialize();
 

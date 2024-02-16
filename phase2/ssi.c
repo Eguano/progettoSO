@@ -9,10 +9,10 @@
  */
 void SSIRequest(pcb_t* sender, int service, void* arg) {
   ssi_payload_t payload = {service, arg};
-  // TODO: gestire indirizzo del processo SSI
-  // SYSCALL(SENDMESSAGE, (memaddr) ssi, &payload, 0);
+  SYSCALL(SENDMESSAGE, ssiAddress, &payload, 0);
+  // se non è OK il processo ssi non esiste -> emergency shutdown
   if (sender->p_s.reg_v0 != OK) PANIC();
-  // SYSCALL(RECEIVEMESSAGE, (memaddr) ssi, sender, 0);
+  SYSCALL(RECEIVEMESSAGE, ssiAddress, sender, 0);
 }
 
 /**
@@ -22,11 +22,14 @@ void SSIHandler() {
   while (TRUE) {
     ssi_payload_t payload;
     SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, &payload, 0);
+    // processo mittente
     pcb_PTR sender = currentProcess->p_s.reg_v0;
-    unsigned int result = NULL;
+    // risposta da inviare al sender
+    unsigned int response = NULL;
+    // esecuzione del servizio richiesto
     if (payload.service_code == CREATEPROCESS) {
       // creare un nuovo processo
-      result = createProcess((ssi_create_process_PTR) payload.arg, sender);
+      response = createProcess((ssi_create_process_PTR) payload.arg, sender);
     } else if (payload.service_code == TERMPROCESS) {
       // eliminare un processo esistente
       if (payload.arg == NULL) {
@@ -35,31 +38,36 @@ void SSIHandler() {
         terminateProcess(payload.arg);
       }
     } else if (payload.service_code == DOIO) {
-      // TODO: fare sezione 7.3
+      // eseguire un input o output
+      // TODO: fare sezione 7.3, necessari interrupt
     } else if (payload.service_code == GETTIME) {
       // restituire accumulated processor time
-      result = &(sender->p_time);
+      response = &(sender->p_time);
     } else if (payload.service_code == CLOCKWAIT) {
-      // TODO: fare sezione 7.5
+      // bloccare il processo per lo pseudoclock
+      insertProcQ(&pseudoclockBlocked->p_list, sender);
+      waitingCount++;
+      /* TODO: quando un processo è in attesa della receive, dove viene bloccato?
+      quando gli rispondo dove finisce? verificare se è da eliminare da altre liste*/
     } else if (payload.service_code == GETSUPPORTPTR) {
       // restituire la struttura di supporto
-      result = sender->p_supportStruct;
+      response = sender->p_supportStruct;
     } else if (payload.service_code == GETPROCESSID) {
       // restituire il pid del sender o del suo genitore
       if (payload.arg == 0) {
-        result = sender->p_pid;
+        response = sender->p_pid;
       } else {
         if (sender->p_parent == NULL) {
-          result = 0;
+          response = 0;
         } else {
-          result = sender->p_parent->p_pid;
+          response = sender->p_parent->p_pid;
         }
       }
     } else {
       // codice non esiste, terminare processo richiedente e tutta la sua progenie
       terminateProcess(sender);
     }
-    SYSCALL(SENDMESSAGE, sender, result, 0);
+    SYSCALL(SENDMESSAGE, sender, response, 0);
   }
 }
 
@@ -90,7 +98,7 @@ unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
  * @param proc processo da eliminare
  */
 void terminateProcess(pcb_t *proc) {
-  proc = outChild(proc);
+  outChild(proc);
   if (!emptyChild(proc)) terminateProgeny(proc);
   destroyProcess(proc);
 }
