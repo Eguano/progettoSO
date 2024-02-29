@@ -8,5 +8,7 @@
 
 void syscallHandler();
 void passUpOrDie(int indexValue);
+void sendMessage();
+void receiveMessage();
 
 #endif

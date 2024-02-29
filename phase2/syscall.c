@@ -6,31 +6,57 @@
 void syscallHandler() {
 
     //Incremento il PC per evitare loop infinito
-    currentState->pc_epc += WORDLEN;
+    currentState->pc_epc += WORDLEN;    
 
     switch(currentState->reg_a0) {
-        
-        case SENDMESSAGE:   
-            // Se il processo che ha invocato una system call era in kernel mode:
-            // sendMessage()
-            // Altrimenti
-            // PassUpOrDie(GENERALEXCEPT)
+        int KUp = (currentState->status >> 3) & 0x00000001;
+        case SENDMESSAGE: 
+            if(KUp) {
+                // User mode
+                PassUpOrDie(GENERALEXCEPT);
+            } else {
+                // Kernel mode
+                sendMessage();
+            }
             break;
         case RECEIVEMESSAGE:
-            // Se il processo che ha invocato una system call era in kernel mode:
-            // receiveMessage()
-            // Altrimenti
-            // PassUpOrDie(GENERALEXCEPT)
+            if(KUp) {
+                // User mode
+                PassUpOrDie(GENERALEXCEPT);
+            } else {
+                // Kernel mode
+                receiveMessage();
+            }
             break;
         default:
-            // PassUpOrDie(GENERALEXCEPT)
+            PassUpOrDie(GENERALEXCEPT);
             break;  
     }
+}
+
+/*
+Manda un messaggio ad uno specifico processo destinatario (operazione asincrona ovvero non aspetta la receiveMessage) 
+- Se avviene con successo inserisce 0 nel registro v0 del chiamante altrimenti inserisce MSGNOGOOD per segnalare errore
+- Non perde il time slice rimanente
+- Se il processo destinatario è nella pcbFree_h list, setta il registro v0 con DEST_NOT_EXIST
+- Se il processo è nella ready queue il messaggio viene pushato nella inbox altrimenti se il processo sta aspettando un messaggio, 
+deve essere svegliato e inserito nella ready queue
+
+a0 = -1
+a1 = destination process
+a2 = payload
+
+*/
+void sendMessage() {
+    
+}
+
+
+void receiveMessage() {
+
 }
 
 
 void passUpOrDie(int indexValue) {
 
 }
-
-
