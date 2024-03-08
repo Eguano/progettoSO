@@ -5,9 +5,12 @@
 #define SYSCALL_H
 
 #include "exceptions.h"
+#include "pcb.c"
+#include "init.h"
+#include "msg.h"
 
 void syscallHandler();
-void passUpOrDie(int indexValue);
+void passUpOrDie(int);
 void sendMessage();
 void receiveMessage();
 

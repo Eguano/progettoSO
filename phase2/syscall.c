@@ -35,23 +35,55 @@ void syscallHandler() {
 }
 
 /*
-Manda un messaggio ad uno specifico processo destinatario (operazione asincrona ovvero non aspetta la receiveMessage) 
-- Se avviene con successo inserisce 0 nel registro v0 del chiamante altrimenti inserisce MSGNOGOOD per segnalare errore
-- Non perde il time slice rimanente
-- Se il processo destinatario è nella pcbFree_h list, setta il registro v0 con DEST_NOT_EXIST
-- Se il processo è nella ready queue il messaggio viene pushato nella inbox altrimenti se il processo sta aspettando un messaggio, 
-deve essere svegliato e inserito nella ready queue
-
-a0 = -1
-a1 = destination process
-a2 = payload
-
+    Manda un messaggio ad uno specifico processo destinatario 
 */
 void sendMessage() {
-    
+    pcb_PTR destination = currentState->reg_a1;
+    msg_PTR payload = currentState->reg_a2;
+    int messagePushed = 0;
+
+    // Controlla se il processo destinatario è nella pcbFree_h list
+    int inPcbFree_h = 0;
+    pcb_PTR iter;
+    list_for_each_entry(iter, &pcbFree_h, p_list) {
+        if(iter == destination) {
+            inPcbFree_h = 1;
+            currentState->reg_v0 = DEST_NOT_EXIST;
+        }
+    }
+
+    // Controlla se il processo destinatario è nella readyQueue
+    int inReadyQueue = 0;
+    list_for_each_entry(iter, &readyQueue->p_list, p_list) {
+        // Se il processo è nella readyQueue allora pusha il messaggio nella inbox
+        if(iter == destination) {
+            inReadyQueue = 1;
+            pushMessage(&iter->msg_inbox, payload);
+            currentState->reg_v0 = 0;
+            messagePushed = 1;
+        }
+    }
+    // Se il processo non è nella readyQueue allora inseriscilo nella readyQueue e pusha il messaggio nella inbox
+    if(!inReadyQueue && !inPcbFree_h) {
+        insertProcQ(&readyQueue->p_list, destination);
+        pushMessage(&destination->msg_inbox, payload);
+        currentState->reg_v0 = 0;
+        messagePushed = 1;
+    }
+
+    // Altrimenti ritorna MSGNOGOOD
+    if(!messagePushed && !inPcbFree_h) {
+        currentState->reg_v0 = MSGNOGOOD;
+    }
 }
 
 
+/*
+    This system call is used by a process to extract a message from its inbox or, if this one is empty, to wait for a message
+*/
+/*
+
+*/
 void receiveMessage() {
 
 }

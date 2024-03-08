@@ -19,8 +19,8 @@ void uTLB_RefillHandler() {
  * 
  */
 void exceptionHandler() {
-    switch((currentState->cause & GETEXECCODE) >> CAUSESHIFT) {
-        case 0:
+    switch((getCAUSE() & GETEXECCODE) >> CAUSESHIFT) {
+        case IOINTERRUPTS:
             // External Device Interrupt
             interruptHandler();
             break;
@@ -32,7 +32,7 @@ void exceptionHandler() {
             // Program Traps p1: Address and Bus Error Exception
             passUpOrDie(GENERALEXCEPT);
             break;
-        case 8: 
+        case SYSEXCEPTION: 
             // Syscalls
             syscallHandler();
 		    break;
