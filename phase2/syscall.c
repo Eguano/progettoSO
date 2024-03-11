@@ -82,34 +82,41 @@ void sendMessage() {
     This system call is used by a process to extract a message from its inbox or, if this one is empty, to wait for a message
 */
 void receiveMessage() {
-    msg_PTR messageExtracted;
+    msg_PTR messageExtracted = NULL;
     pcb_PTR sender = (pcb_PTR)currentState->reg_a1;
-    unsigned int payload = currentState->reg_a2;
+    unsigned int *payload = currentState->reg_a2;
 
     if(sender == ANYMESSAGE) {
-        messageExtracted = popMessage(&currentProcess->msg_inbox, NULL);
+        sender = NULL;
     }
+    messageExtracted = popMessage(&currentProcess->msg_inbox, sender);
+    
+    /* Se scade il time slice disponibile (quindi c'è stato un PLT interrupt) {
+        il PLT interrupt farà robe
+    }
+    */
+
+    // Il messaggio non è stato trovato (va bloccato)
+    /*else*/ if(messageExtracted == NULL) {
+        // Rimuoviamo il processo dalla ready queue
+        list_del(&currentProcess->p_list);
+        // Aggiungere il processo nella lista di processi bloccati (?)
+        currentProcess->p_s = *currentState;
+        currentProcess->p_time = getCPUTime();
+        schedule();
+    } 
+    // Il messaggio è stato trovato
     else {
-        messageExtracted = popMessage(&currentProcess->msg_inbox, sender);
-    }
-    
-    // IMPLEMENTARE GESTIONE BLOCCO PROCESSO
-    if(messageExtracted == NULL) {
-        
-    }
-    
-    // Memorizzare il payload del messaggio nella zona puntata da reg_a2
-    if(payload != NULL) {
-        *(unsigned int*)payload = messageExtracted->m_payload; 
-    }
+        // Memorizzare il payload del messaggio nella zona puntata da reg_a2
+        if(payload != NULL) {
+            *payload = messageExtracted->m_payload; 
+        }
 
-    // Carica in reg_v0 il processo mittente
-    currentState->reg_v0 = messageExtracted->m_sender;
+        // Carica in reg_v0 il processo mittente
+        currentState->reg_v0 = messageExtracted->m_sender;
 
-    freeMsg(messageExtracted);
-
-    // IMPLEMENTARE GESTIONE USCITA DA SYSCALL BLOCCANTE
-    
+        freeMsg(messageExtracted);
+    }
 }
 
 
