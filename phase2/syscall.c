@@ -90,8 +90,6 @@ void receiveMessage() {
 
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
-        // Rimuoviamo il processo dalla ready queue
-        list_del(&currentProcess->p_list);
         // Aggiungere il processo nella lista di processi bloccati (?)
         currentProcess->p_s = *currentState;
         currentProcess->p_time += getTIMER();
