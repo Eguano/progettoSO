@@ -1,5 +1,6 @@
 #include "syscall.h"
 
+// TODO: SPOSTARE RICERCA DEL PCB NELLA FREELIST
 
 void syscallHandler() {
 
@@ -41,17 +42,14 @@ void sendMessage() {
     int messagePushed = 0;
 
     // Controlla se il processo destinatario è nella pcbFree_h list
-    int inPcbFree_h = 0;
-    pcb_PTR iter;
-    list_for_each_entry(iter, &pcbFree_h, p_list) {
-        if(iter == receiver) {
-            inPcbFree_h = 1;
-            currentState->reg_v0 = DEST_NOT_EXIST;
-        }
-    }
+    int inPcbFree_h = isInPCBFree_h(receiver);
+    if(inPcbFree_h) {
+        currentState->reg_v0 = DEST_NOT_EXIST;
+    }    
 
     // Controlla se il processo destinatario è nella readyQueue
     int inReadyQueue = 0;
+    pcb_PTR iter;
     list_for_each_entry(iter, &readyQueue->p_list, p_list) {
         // Se il processo è nella readyQueue allora pusha il messaggio nella inbox
         if(iter == receiver) {

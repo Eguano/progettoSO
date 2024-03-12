@@ -5,7 +5,7 @@
 #define SYSCALL_H
 
 #include "exceptions.h"
-#include "pcb.c"
+#include "pcb.h"
 #include "init.h"
 #include "msg.h"
 #include "ssi.h"
