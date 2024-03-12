@@ -1,7 +1,5 @@
 #include "syscall.h"
 
-// TODO: la systemcall SYS2 (receive) deve lasciare nel registro v0 (p_s.reg_v0)
-// del ricevente il puntatore al processo mittente del msg
 
 void syscallHandler() {
 
@@ -59,15 +57,16 @@ void sendMessage() {
         if(iter == receiver) {
             inReadyQueue = 1;
             pushMessage(&iter->msg_inbox, payload);
-            currentState->reg_v0 = 0;
+            currentState->reg_v0 = OK;
             messagePushed = 1;
         }
     }
     // Se il processo non è nella readyQueue allora inseriscilo nella readyQueue e pusha il messaggio nella inbox
     if(!inReadyQueue && !inPcbFree_h) {
+        // 
         insertProcQ(&readyQueue->p_list, receiver);
         pushMessage(&receiver->msg_inbox, payload);
-        currentState->reg_v0 = 0;
+        currentState->reg_v0 = OK;
         messagePushed = 1;
     }
 
@@ -90,19 +89,14 @@ void receiveMessage() {
         sender = NULL;
     }
     messageExtracted = popMessage(&currentProcess->msg_inbox, sender);
-    
-    /* Se scade il time slice disponibile (quindi c'è stato un PLT interrupt) {
-        il PLT interrupt farà robe
-    }
-    */
 
     // Il messaggio non è stato trovato (va bloccato)
-    /*else*/ if(messageExtracted == NULL) {
+    if(messageExtracted == NULL) {
         // Rimuoviamo il processo dalla ready queue
         list_del(&currentProcess->p_list);
         // Aggiungere il processo nella lista di processi bloccati (?)
         currentProcess->p_s = *currentState;
-        currentProcess->p_time = getCPUTime();
+        currentProcess->p_time += getTIMER();
         schedule();
     } 
     // Il messaggio è stato trovato

@@ -8,6 +8,7 @@
 #include "pcb.c"
 #include "init.h"
 #include "msg.h"
+#include "ssi.h"
 
 void syscallHandler();
 void passUpOrDie(int);
