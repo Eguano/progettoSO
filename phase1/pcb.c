@@ -124,6 +124,16 @@ pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
     return NULL;
 }
 
+int isInPCBFree_h(pcb_t *p) {
+    pcb_PTR iter;
+    list_for_each_entry(iter, &pcbFree_h, p_list) {
+        if(iter == p) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /**
  * @brief True se il processo puntato da p non ha figli, false altrimenti.
  * 
