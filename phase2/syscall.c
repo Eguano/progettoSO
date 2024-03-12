@@ -1,7 +1,5 @@
 #include "syscall.h"
 
-// TODO: la systemcall SYS2 (receive) deve lasciare nel registro v0 (p_s.reg_v0)
-// del ricevente il puntatore al processo mittente del msg
 
 void syscallHandler() {
 
@@ -38,15 +36,15 @@ void syscallHandler() {
     Manda un messaggio ad uno specifico processo destinatario 
 */
 void sendMessage() {
-    pcb_PTR destination = currentState->reg_a1;
-    msg_PTR payload = currentState->reg_a2;
+    pcb_PTR receiver = (pcb_PTR)currentState->reg_a1;
+    msg_PTR payload = (msg_PTR)currentState->reg_a2;
     int messagePushed = 0;
 
     // Controlla se il processo destinatario è nella pcbFree_h list
     int inPcbFree_h = 0;
     pcb_PTR iter;
     list_for_each_entry(iter, &pcbFree_h, p_list) {
-        if(iter == destination) {
+        if(iter == receiver) {
             inPcbFree_h = 1;
             currentState->reg_v0 = DEST_NOT_EXIST;
         }
@@ -56,18 +54,19 @@ void sendMessage() {
     int inReadyQueue = 0;
     list_for_each_entry(iter, &readyQueue->p_list, p_list) {
         // Se il processo è nella readyQueue allora pusha il messaggio nella inbox
-        if(iter == destination) {
+        if(iter == receiver) {
             inReadyQueue = 1;
             pushMessage(&iter->msg_inbox, payload);
-            currentState->reg_v0 = 0;
+            currentState->reg_v0 = OK;
             messagePushed = 1;
         }
     }
     // Se il processo non è nella readyQueue allora inseriscilo nella readyQueue e pusha il messaggio nella inbox
     if(!inReadyQueue && !inPcbFree_h) {
-        insertProcQ(&readyQueue->p_list, destination);
-        pushMessage(&destination->msg_inbox, payload);
-        currentState->reg_v0 = 0;
+        // 
+        insertProcQ(&readyQueue->p_list, receiver);
+        pushMessage(&receiver->msg_inbox, payload);
+        currentState->reg_v0 = OK;
         messagePushed = 1;
     }
 
@@ -81,11 +80,37 @@ void sendMessage() {
 /*
     This system call is used by a process to extract a message from its inbox or, if this one is empty, to wait for a message
 */
-/*
-
-*/
 void receiveMessage() {
+    msg_PTR messageExtracted = NULL;
+    pcb_PTR sender = (pcb_PTR)currentState->reg_a1;
+    unsigned int *payload = currentState->reg_a2;
 
+    if(sender == ANYMESSAGE) {
+        sender = NULL;
+    }
+    messageExtracted = popMessage(&currentProcess->msg_inbox, sender);
+
+    // Il messaggio non è stato trovato (va bloccato)
+    if(messageExtracted == NULL) {
+        // Rimuoviamo il processo dalla ready queue
+        list_del(&currentProcess->p_list);
+        // Aggiungere il processo nella lista di processi bloccati (?)
+        currentProcess->p_s = *currentState;
+        currentProcess->p_time += getTIMER();
+        schedule();
+    } 
+    // Il messaggio è stato trovato
+    else {
+        // Memorizzare il payload del messaggio nella zona puntata da reg_a2
+        if(payload != NULL) {
+            *payload = messageExtracted->m_payload; 
+        }
+
+        // Carica in reg_v0 il processo mittente
+        currentState->reg_v0 = messageExtracted->m_sender;
+
+        freeMsg(messageExtracted);
+    }
 }
 
 
