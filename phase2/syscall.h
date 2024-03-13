@@ -5,9 +5,9 @@
 #define SYSCALL_H
 
 #include "exceptions.h"
-#include "pcb.h"
+#include "../phase1/headers/pcb.h"
 #include "init.h"
-#include "msg.h"
+#include "../phase1/headers/msg.h"
 #include "ssi.h"
 
 void syscallHandler();
