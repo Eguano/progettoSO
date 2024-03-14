@@ -16,6 +16,7 @@
 /* Hardware & software constants */
 #define PAGESIZE 4096 /* page size in bytes	*/
 #define WORDLEN  4    /* word size in bytes	*/
+#define WORDSIZE 32   /* word size in bits */
 
 
 /* timer, timescale, TOD-LO and other bus regs */
@@ -76,6 +77,7 @@
 #define PRINTINTERRUPT 0x00004000   // 6 - multidevice
 #define TERMINTERRUPT  0x00008000   // 7 - multidevice
 #define IOINTERRUPTS   0
+#define INTDEVBITMAP   0x10000040
 #define TLBINVLDL      2
 #define TLBINVLDS      3
 #define SYSEXCEPTION   8

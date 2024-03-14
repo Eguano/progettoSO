@@ -29,8 +29,33 @@ void interruptHandler() {
                         LDST(currentState);
                 break;
                 default:
+
+                    // Punto alla interrupt lane corrente usando la interrupt devices bit map
+                    unsigned int *intLaneMapped = (unsigned int *)(INTDEVBITMAP + (WORDSIZE * (i - 2)));
                     for(int j = 0; j < 8; j++) {
-                        
+                        if(((*intLaneMapped) & deviceConsts[j]) == 1) {
+
+                            // Punto al device register del device che invoca l'interrupt
+                            unsigned int *devReg = (unsigned int *)(START_DEVREG + (i * 0x08) + (j * 0x10));  
+
+                            /** 
+                             * In teoria i device register hanno questa forma:
+                             * 0000 0000 0000 0000 [DATA1] [DATA0] [COMMAND] [STATUS]
+                             * Quindi per prendere solo la parte status maschero tutti i bit
+                             * tranne i primi 4
+                            */
+                            unsigned int devStatusReg = (*devReg) & 0xF;
+
+                            /**
+                             * Per settare i bit di COMMAND a ACK, inserisco prima di tutto l'ACK
+                             * nella posizione corretta all'interno di 32 bit tutti settati a 0,
+                             * poi maschero il contenuto di tutto devReg in modo da avere tutti i
+                             * bit all'infuori del segmento COMMAND. Poi mi basta fare l'or bit a bit
+                             * per unire devReg con COMMAND mascherato a ACK, andando a sovrascrivere
+                             * COMMAND.
+                            */
+                            *devReg = (*devReg & ~0xF0) | (0x00000000 | (ACK << 4));
+                        }
                     }
                 break;
             }
