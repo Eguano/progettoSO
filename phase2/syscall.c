@@ -8,7 +8,7 @@ void syscallHandler() {
     currentState->pc_epc += WORDLEN;    
 
     switch(currentState->reg_a0) {
-        int KUp = (currentState->status >> 3) & 0x00000001;
+        int KUp = (currentState->status & USERPON);
         case SENDMESSAGE: 
             if(KUp) {
                 // User mode
