@@ -11,7 +11,7 @@
 #include "ssi.h"
 
 void syscallHandler();
-void passUpOrDie(int);
+
 void sendMessage();
 void receiveMessage();
 

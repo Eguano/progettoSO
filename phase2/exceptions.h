@@ -11,6 +11,7 @@
 
 void uTLB_RefillHandler();
 void exceptionHandler();
+void passUpOrDie(int);
 
 extern state_t *currentState;
 
