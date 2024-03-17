@@ -16,6 +16,7 @@
 /* Hardware & software constants */
 #define PAGESIZE 4096 /* page size in bytes	*/
 #define WORDLEN  4    /* word size in bytes	*/
+#define WORDSIZE 32   /* word size in bits */
 
 
 /* timer, timescale, TOD-LO and other bus regs */
@@ -69,13 +70,14 @@
 /* Cause register constants */
 #define GETEXECCODE    0x0000007C
 #define CLEAREXECCODE  0xFFFFFF00
-#define LOCALTIMERINT  0x00000200   // 1 - Process Local Timer
-#define TIMERINTERRUPT 0x00000400   // 2 - System wide interval timer
-#define DISKINTERRUPT  0x00000800   // 3 - multidevice
-#define FLASHINTERRUPT 0x00001000   // 4 - multidevice
-#define PRINTINTERRUPT 0x00004000   // 6 - multidevice
-#define TERMINTERRUPT  0x00008000   // 7 - multidevice
+#define LOCALTIMERINT  0x00000200   
+#define TIMERINTERRUPT 0x00000400   
+#define DISKINTERRUPT  0x00000800   
+#define FLASHINTERRUPT 0x00001000   
+#define PRINTINTERRUPT 0x00004000   
+#define TERMINTERRUPT  0x00008000   
 #define IOINTERRUPTS   0
+#define INTDEVBITMAP   0x10000040
 #define TLBINVLDL      2
 #define TLBINVLDS      3
 #define SYSEXCEPTION   8
