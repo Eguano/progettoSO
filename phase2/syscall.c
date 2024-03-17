@@ -111,5 +111,21 @@ void receiveMessage() {
 
 
 void passUpOrDie(int indexValue) {
+    
+    // Pass up
+    if(currentProcess->p_supportStruct != NULL) {
+        currentProcess->p_supportStruct->sup_exceptState[indexValue] = *currentState;
+
+        unsigned int stackPtr, status, progCounter;
+        stackPtr = currentProcess->p_supportStruct->sup_exceptContext[indexValue].stackPtr;
+        status = currentProcess->p_supportStruct->sup_exceptContext[indexValue].status;
+        progCounter = currentProcess->p_supportStruct->sup_exceptContext[indexValue].pc;
+
+        LDCXT(stackPtr, status, progCounter);
+    }
+    // Or die
+    else {
+        SSIRequest(currentProcess, TERMPROCESS, NULL);
+    }
 
 }
