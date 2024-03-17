@@ -46,12 +46,6 @@ void exceptionHandler() {
 	}
 }
 
-
-void passUpOrDie(int indexValue) {
-
-}
-
-
 /*
     Number - Code - Description
     0 - Int - External Device Interrupt
