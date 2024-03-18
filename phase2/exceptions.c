@@ -47,6 +47,10 @@ void exceptionHandler() {
 }
 
 
+void passUpOrDie(int indexValue) {
+
+}
+
 
 /*
     Number - Code - Description

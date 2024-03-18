@@ -11,19 +11,23 @@ void syscallHandler() {
         int KUp = (currentState->status & USERPON);
         case SENDMESSAGE: 
             if(KUp) {
-                // User mode
+                // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
+                currentState->cause &= CLEAREXECCODE;
+                currentState->cause |= (PRIVINSTR << CAUSESHIFT);
                 PassUpOrDie(GENERALEXCEPT);
             } else {
-                // Kernel mode
+                // Se kernel mode allora invoca il metodo
                 sendMessage();
             }
             break;
         case RECEIVEMESSAGE:
             if(KUp) {
-                // User mode
+                // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
+                currentState->cause &= CLEAREXECCODE;
+                currentState->cause |= (PRIVINSTR << CAUSESHIFT);
                 PassUpOrDie(GENERALEXCEPT);
             } else {
-                // Kernel mode
+                // Se kernel mode allora invoca il metodo
                 receiveMessage();
             }
             break;
@@ -90,7 +94,6 @@ void receiveMessage() {
 
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
-        // Aggiungere il processo nella lista di processi bloccati (?)
         currentProcess->p_s = *currentState;
         currentProcess->p_time += getTIMER();
         schedule();
@@ -107,9 +110,4 @@ void receiveMessage() {
 
         freeMsg(messageExtracted);
     }
-}
-
-
-void passUpOrDie(int indexValue) {
-
 }
