@@ -1,5 +1,16 @@
 #include "ssi.h"
 
+#include "../phase1/headers/pcb.h"
+
+extern int process_count;
+extern int waiting_count;
+extern pcb_PTR current_process;
+extern pcb_PTR ready_queue;
+extern pcb_PTR external_blocked_list[4][MAXDEV];
+extern pcb_PTR pseudoclock_blocked_list;
+extern pcb_PTR terminal_blocked_list[2][MAXDEV];
+extern pcb_PTR ssi_pcb;
+
 /**
  * Invia una richiesta all'SSI
  * 
@@ -9,10 +20,10 @@
  */
 void SSIRequest(pcb_t* sender, int service, void* arg) {
   ssi_payload_t payload = {service, arg};
-  SYSCALL(SENDMESSAGE, ssiAddress, &payload, 0);
+  SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
   // se non è OK il processo ssi non esiste -> emergency shutdown
   if (sender->p_s.reg_v0 != OK) PANIC();
-  SYSCALL(RECEIVEMESSAGE, ssiAddress, sender, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) sender, 0);
 }
 
 /**
@@ -21,15 +32,17 @@ void SSIRequest(pcb_t* sender, int service, void* arg) {
 void SSIHandler() {
   while (TRUE) {
     ssi_payload_t payload;
-    SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, &payload, 0);
+    SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &payload, 0);
     // processo mittente
-    pcb_PTR sender = currentProcess->p_s.reg_v0;
+    pcb_PTR sender = (pcb_PTR) current_process->p_s.reg_v0;
     // risposta da inviare al sender
-    unsigned int response = NULL;
+    unsigned int response = (unsigned int) NULL;
+
     // esecuzione del servizio richiesto
     if (payload.service_code == CREATEPROCESS) {
       // creare un nuovo processo
-      response = createProcess((ssi_create_process_PTR) payload.arg, sender);
+      // TODO: gestire il return NULL (se non alloca il processo) -> bisogna rispondere NOPROC
+      response = (unsigned int) createProcess((ssi_create_process_PTR) payload.arg, sender);
     } else if (payload.service_code == TERMPROCESS) {
       // eliminare un processo esistente
       if (payload.arg == NULL) {
@@ -42,16 +55,16 @@ void SSIHandler() {
       // TODO: fare sezione 7.3, necessari interrupt
     } else if (payload.service_code == GETTIME) {
       // restituire accumulated processor time
-      response = &(sender->p_time);
+      response = (unsigned int) &(sender->p_time);
     } else if (payload.service_code == CLOCKWAIT) {
       // bloccare il processo per lo pseudoclock
-      insertProcQ(&pseudoclockBlocked->p_list, sender);
-      waitingCount++;
+      insertProcQ(&pseudoclock_blocked_list->p_list, sender);
+      waiting_count++;
       /* TODO: quando un processo è in attesa della receive, dove viene bloccato?
       quando gli rispondo dove finisce? verificare se è da eliminare da altre liste*/
     } else if (payload.service_code == GETSUPPORTPTR) {
       // restituire la struttura di supporto
-      response = sender->p_supportStruct;
+      response = (unsigned int) sender->p_supportStruct;
     } else if (payload.service_code == GETPROCESSID) {
       // restituire il pid del sender o del suo genitore
       if (payload.arg == 0) {
@@ -67,7 +80,7 @@ void SSIHandler() {
       // codice non esiste, terminare processo richiedente e tutta la sua progenie
       terminateProcess(sender);
     }
-    SYSCALL(SENDMESSAGE, sender, response, 0);
+    SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
   }
 }
 
@@ -76,20 +89,18 @@ void SSIHandler() {
  * 
  * @param arg struttura contenente state e support (eventuale)
  * @param sender processo richiedente
- * @return puntatore al processo creato, NOPROC altrimenti
+ * @return puntatore al processo creato, NULL altrimenti
  */
-unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
+static pcb_PTR createProcess(ssi_create_process_t *arg, pcb_t *sender) {
   pcb_PTR p = allocPcb();
-  if (p == NULL) {
-    return NOPROC;
-  } else {
+  if (p != NULL) {
     p->p_s = *arg->state;
     p->p_supportStruct = arg->support;
-    insertProcQ(&readyQueue->p_list, p);
-    processCount++;
+    insertProcQ(&ready_queue->p_list, p);
+    process_count++;
     insertChild(sender, p);
-    return p;
   }
+  return p;
 }
 
 /**
@@ -97,7 +108,7 @@ unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
  * 
  * @param proc processo da eliminare
  */
-void terminateProcess(pcb_t *proc) {
+static void terminateProcess(pcb_t *proc) {
   outChild(proc);
   if (!emptyChild(proc)) terminateProgeny(proc);
   destroyProcess(proc);
@@ -108,7 +119,7 @@ void terminateProcess(pcb_t *proc) {
  * 
  * @param p processo di cui eliminare i figli
  */
-void terminateProgeny(pcb_t *p) {
+static void terminateProgeny(pcb_t *p) {
   while (!emptyChild(p)) {
     terminateProgeny(getFirstChild(p));
     pcb_PTR removed = removeChild(p);
@@ -121,23 +132,24 @@ void terminateProgeny(pcb_t *p) {
  * 
  * @param p processo da rimuovere dalle code
  */
-void destroyProcess(pcb_t *p) {
+static void destroyProcess(pcb_t *p) {
   // lo cerco nella ready queue
-  if (outProcQ(&readyQueue->p_list, p) == NULL) {
+  if (outProcQ(&ready_queue->p_list, p) == NULL) {
     // se non è nella ready lo cerco tra i bloccati per lo pseudoclock
-    if (outProcQ(&pseudoclockBlocked->p_list, p) == NULL) {
+    if (outProcQ(&pseudoclock_blocked_list->p_list, p) == NULL) {
       // se non è per lo pseudoclock, è bloccato per un altro interrupt
       int found = 0;
-      for (int i = 0; i < SEMDEVLEN - 1 && found == 0; i++) {
-        if (outProcQ(&externalBlocked[i]->p_list, p) != NULL) found = 1;
-      }
-      for (int i = 0; i < MAXTERMINALDEV && found == 0; i++) {
-        if (outProcQ(&terminalBlocked[0][i]->p_list, p) != NULL) found = 1;
-        if (outProcQ(&terminalBlocked[1][i]->p_list, p) != NULL) found = 1;
+      for (int i = 0; i < MAXDEV && found == 0; i++) {
+        if (outProcQ(&external_blocked_list[0][i]->p_list, p) != NULL) found = 1;
+        if (outProcQ(&external_blocked_list[1][i]->p_list, p) != NULL) found = 1;
+        if (outProcQ(&external_blocked_list[2][i]->p_list, p) != NULL) found = 1;
+        if (outProcQ(&external_blocked_list[3][i]->p_list, p) != NULL) found = 1;
+        if (outProcQ(&terminal_blocked_list[0][i]->p_list, p) != NULL) found = 1;
+        if (outProcQ(&terminal_blocked_list[1][i]->p_list, p) != NULL) found = 1;
       }
     }
-    waitingCount--;
+    waiting_count--;
   }
   freePcb(p);
-  processCount--;
+  process_count--;
 }

@@ -4,11 +4,8 @@
 #ifndef SYSCALL_H
 #define SYSCALL_H
 
-#include "exceptions.h"
-#include "../phase1/headers/pcb.h"
-#include "init.h"
-#include "../phase1/headers/msg.h"
-#include "ssi.h"
+#include <umps/libumps.h>
+#include "../headers/types.h"
 
 void syscallHandler();
 

@@ -198,4 +198,7 @@
 /* Inizio indirizzo di device registers */
 #define START_DEVREG		0x10000054
 
+// Max number of device's instances - definita da IVAN
+#define MAXDEV 8
+
 #endif

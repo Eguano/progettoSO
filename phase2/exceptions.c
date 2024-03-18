@@ -1,6 +1,13 @@
 #include "exceptions.h"
 
-state_t *currentState = (state_t *)BIOSDATAPAGE;    
+#include "syscall.h"
+
+extern void passUpOrDie(int);
+extern void interruptHandler();
+extern void syscallHandler();
+
+// TODO: questo deve essere aggiornato ogni volta che c'è un'eccezione?
+state_t *currentState = (state_t *)BIOSDATAPAGE; 
 
 /**
  * Gestisce il caso in cui si prova accedere ad un indirizzo 
@@ -12,7 +19,6 @@ void uTLB_RefillHandler() {
     TLBWR();
     LDST((state_t*) 0x0FFFF000);
 }
-
 
 /**
  * Gestisce tutte gli altri tipi di eccezioni
@@ -45,12 +51,6 @@ void exceptionHandler() {
             break;
 	}
 }
-
-
-void passUpOrDie(int indexValue) {
-
-}
-
 
 /*
     Number - Code - Description
