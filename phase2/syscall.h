@@ -15,4 +15,6 @@ void syscallHandler();
 void sendMessage();
 void receiveMessage();
 
+void passUpOrDie(int);
+
 #endif
