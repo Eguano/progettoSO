@@ -19,21 +19,26 @@ void syscallHandler() {
     int KUp = (currentState->status >> 3) & 0x00000001;
 
     switch(currentState->reg_a0) {
+        int KUp = (currentState->status & USERPON);
         case SENDMESSAGE: 
             if(KUp) {
-                // User mode
-                passUpOrDie(GENERALEXCEPT);
+                // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
+                currentState->cause &= CLEAREXECCODE;
+                currentState->cause |= (PRIVINSTR << CAUSESHIFT);
+                PassUpOrDie(GENERALEXCEPT);
             } else {
-                // Kernel mode
+                // Se kernel mode allora invoca il metodo
                 sendMessage();
             }
             break;
         case RECEIVEMESSAGE:
             if(KUp) {
-                // User mode
-                passUpOrDie(GENERALEXCEPT);
+                // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
+                currentState->cause &= CLEAREXECCODE;
+                currentState->cause |= (PRIVINSTR << CAUSESHIFT);
+                PassUpOrDie(GENERALEXCEPT);
             } else {
-                // Kernel mode
+                // Se kernel mode allora invoca il metodo
                 receiveMessage();
             }
             break;
@@ -100,11 +105,8 @@ void receiveMessage() {
 
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
-        // Rimuoviamo il processo dalla ready queue
-        list_del(&current_process->p_list);
-        // Aggiungere il processo nella lista di processi bloccati (?)
-        current_process->p_s = *currentState;
-        current_process->p_time += getTIMER();
+        currentProcess->p_s = *currentState;
+        currentProcess->p_time += getTIMER();
         schedule();
     } 
     // Il messaggio è stato trovato
@@ -119,9 +121,25 @@ void receiveMessage() {
 
         freeMsg(messageExtracted);
     }
+  
 }
 
 
 void passUpOrDie(int indexValue) {
+    
+    // Pass up
+    if(currentProcess->p_supportStruct != NULL) {
+        currentProcess->p_supportStruct->sup_exceptState[indexValue] = *currentState;
 
+        unsigned int stackPtr, status, progCounter;
+        stackPtr = currentProcess->p_supportStruct->sup_exceptContext[indexValue].stackPtr;
+        status = currentProcess->p_supportStruct->sup_exceptContext[indexValue].status;
+        progCounter = currentProcess->p_supportStruct->sup_exceptContext[indexValue].pc;
+
+        LDCXT(stackPtr, status, progCounter);
+    }
+    // Or die
+    else {
+        SSIRequest(currentProcess, TERMPROCESS, NULL);
+    }
 }

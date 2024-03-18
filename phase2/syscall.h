@@ -8,8 +8,10 @@
 #include "../headers/types.h"
 
 void syscallHandler();
-void passUpOrDie(int);
+
 void sendMessage();
 void receiveMessage();
+
+void passUpOrDie(int);
 
 #endif

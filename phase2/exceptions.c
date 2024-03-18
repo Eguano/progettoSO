@@ -52,8 +52,6 @@ void exceptionHandler() {
 	}
 }
 
-
-
 /*
     Number - Code - Description
     0 - Int - External Device Interrupt
