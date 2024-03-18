@@ -1,11 +1,22 @@
 #include "syscall.h"
 
+#include "../phase1/headers/pcb.h"
+#include "../phase1/headers/msg.h"
+
+extern state_t *currentState;
+extern pcb_PTR ready_queue;
+extern pcb_PTR current_process;
+
+extern void schedule();
+
 // TODO: SPOSTARE RICERCA DEL PCB NELLA FREELIST
 
 void syscallHandler() {
 
     //Incremento il PC per evitare loop infinito
     currentState->pc_epc += WORDLEN;    
+
+    int KUp = (currentState->status >> 3) & 0x00000001;
 
     switch(currentState->reg_a0) {
         int KUp = (currentState->status & USERPON);
@@ -32,7 +43,7 @@ void syscallHandler() {
             }
             break;
         default:
-            PassUpOrDie(GENERALEXCEPT);
+            passUpOrDie(GENERALEXCEPT);
             break;  
     }
 }
@@ -54,7 +65,7 @@ void sendMessage() {
     // Controlla se il processo destinatario è nella readyQueue
     int inReadyQueue = 0;
     pcb_PTR iter;
-    list_for_each_entry(iter, &readyQueue->p_list, p_list) {
+    list_for_each_entry(iter, &ready_queue->p_list, p_list) {
         // Se il processo è nella readyQueue allora pusha il messaggio nella inbox
         if(iter == receiver) {
             inReadyQueue = 1;
@@ -66,7 +77,7 @@ void sendMessage() {
     // Se il processo non è nella readyQueue allora inseriscilo nella readyQueue e pusha il messaggio nella inbox
     if(!inReadyQueue && !inPcbFree_h) {
         // 
-        insertProcQ(&readyQueue->p_list, receiver);
+        insertProcQ(&ready_queue->p_list, receiver);
         pushMessage(&receiver->msg_inbox, payload);
         currentState->reg_v0 = OK;
         messagePushed = 1;
@@ -85,12 +96,12 @@ void sendMessage() {
 void receiveMessage() {
     msg_PTR messageExtracted = NULL;
     pcb_PTR sender = (pcb_PTR)currentState->reg_a1;
-    unsigned int *payload = currentState->reg_a2;
+    unsigned int payload = currentState->reg_a2;
 
     if(sender == ANYMESSAGE) {
         sender = NULL;
     }
-    messageExtracted = popMessage(&currentProcess->msg_inbox, sender);
+    messageExtracted = popMessage(&current_process->msg_inbox, sender);
 
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
@@ -101,12 +112,12 @@ void receiveMessage() {
     // Il messaggio è stato trovato
     else {
         // Memorizzare il payload del messaggio nella zona puntata da reg_a2
-        if(payload != NULL) {
-            *payload = messageExtracted->m_payload; 
+        if(payload != (memaddr) NULL) {
+            payload = messageExtracted->m_payload;
         }
 
         // Carica in reg_v0 il processo mittente
-        currentState->reg_v0 = messageExtracted->m_sender;
+        currentState->reg_v0 = (memaddr) messageExtracted->m_sender;
 
         freeMsg(messageExtracted);
     }
