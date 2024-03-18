@@ -8,6 +8,7 @@ extern pcb_PTR ready_queue;
 extern pcb_PTR current_process;
 
 extern void schedule();
+extern void SSIRequest(pcb_t* sender, int service, void* arg);
 
 // TODO: SPOSTARE RICERCA DEL PCB NELLA FREELIST
 
@@ -16,16 +17,15 @@ void syscallHandler() {
     //Incremento il PC per evitare loop infinito
     currentState->pc_epc += WORDLEN;    
 
-    int KUp = (currentState->status >> 3) & 0x00000001;
+    int KUp = (currentState->status & USERPON);
 
     switch(currentState->reg_a0) {
-        int KUp = (currentState->status & USERPON);
         case SENDMESSAGE: 
             if(KUp) {
                 // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
                 currentState->cause &= CLEAREXECCODE;
                 currentState->cause |= (PRIVINSTR << CAUSESHIFT);
-                PassUpOrDie(GENERALEXCEPT);
+                passUpOrDie(GENERALEXCEPT);
             } else {
                 // Se kernel mode allora invoca il metodo
                 sendMessage();
@@ -36,7 +36,7 @@ void syscallHandler() {
                 // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
                 currentState->cause &= CLEAREXECCODE;
                 currentState->cause |= (PRIVINSTR << CAUSESHIFT);
-                PassUpOrDie(GENERALEXCEPT);
+                passUpOrDie(GENERALEXCEPT);
             } else {
                 // Se kernel mode allora invoca il metodo
                 receiveMessage();
@@ -105,8 +105,8 @@ void receiveMessage() {
 
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
-        currentProcess->p_s = *currentState;
-        currentProcess->p_time += getTIMER();
+        current_process->p_s = *currentState;
+        current_process->p_time += getTIMER();
         schedule();
     } 
     // Il messaggio è stato trovato
@@ -128,18 +128,18 @@ void receiveMessage() {
 void passUpOrDie(int indexValue) {
     
     // Pass up
-    if(currentProcess->p_supportStruct != NULL) {
-        currentProcess->p_supportStruct->sup_exceptState[indexValue] = *currentState;
+    if(current_process->p_supportStruct != NULL) {
+        current_process->p_supportStruct->sup_exceptState[indexValue] = *currentState;
 
         unsigned int stackPtr, status, progCounter;
-        stackPtr = currentProcess->p_supportStruct->sup_exceptContext[indexValue].stackPtr;
-        status = currentProcess->p_supportStruct->sup_exceptContext[indexValue].status;
-        progCounter = currentProcess->p_supportStruct->sup_exceptContext[indexValue].pc;
+        stackPtr = current_process->p_supportStruct->sup_exceptContext[indexValue].stackPtr;
+        status = current_process->p_supportStruct->sup_exceptContext[indexValue].status;
+        progCounter = current_process->p_supportStruct->sup_exceptContext[indexValue].pc;
 
         LDCXT(stackPtr, status, progCounter);
     }
     // Or die
     else {
-        SSIRequest(currentProcess, TERMPROCESS, NULL);
+        SSIRequest(current_process, TERMPROCESS, NULL);
     }
 }
