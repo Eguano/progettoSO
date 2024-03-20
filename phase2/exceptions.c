@@ -53,6 +53,17 @@ void exceptionHandler() {
 }
 
 /*
+    Funzione per copiare strutture
+*/
+void memcpy(memaddr *src, memaddr *dest, unsigned int bytes) {
+    for(int i = 0; i < (bytes/4); i++){
+        *dest = *src;
+        dest++;
+        src++;
+    }
+}
+
+/*
     Number - Code - Description
     0 - Int - External Device Interrupt
     1 - Mod - TLB-Modification Exception
