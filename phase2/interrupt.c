@@ -1,5 +1,13 @@
 #include "interrupt.h"
-#include "exceptions.h"
+
+#include "../phase1/headers/pcb.h"
+
+extern void schedule();
+
+extern pcb_PTR current_process;
+extern pcb_PTR ready_queue;
+extern pcb_PTR pseudoclock_blocked_list;
+extern state_t *currentState;
 
 void interruptHandler() {
     
@@ -13,18 +21,18 @@ void interruptHandler() {
             switch(i) {
                 case 0:
                     setTIMER(TIMESLICE);
-                    currentProcess->p_s = *currentState;
-                    insertProcQ(&readyQueue->p_list, currentProcess);
+                    current_process->p_s = *currentState;
+                    insertProcQ(&ready_queue->p_list, current_process);
                     schedule();
                 break;
                 case 1:
                     LDIT(PSECOND);
                     pcb_PTR it;
-                    while(emptyProcQ(&pseudoclockBlocked->p_list)) {
-                        pcb_PTR toUnblock = removeProcQ(&pseudoclockBlocked->p_list);
-                        insertProcQ(&readyQueue->p_list, toUnblock);
+                    while(emptyProcQ(&pseudoclock_blocked_list->p_list)) {
+                        pcb_PTR toUnblock = removeProcQ(&pseudoclock_blocked_list->p_list);
+                        insertProcQ(&ready_queue->p_list, toUnblock);
                     }
-                    if(currentProcess == NULL)
+                    if(current_process == NULL)
                         schedule();
                     else
                         LDST(currentState);

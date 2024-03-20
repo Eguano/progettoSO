@@ -8,11 +8,12 @@
 #include <umps/libumps.h>
 #include "../headers/const.h"
 #include "../headers/types.h"
-#include "init.h"
-#include "../phase1/headers/pcb.h"
 
 void SSIRequest(pcb_t* sender, int service, void* arg);
-
 void SSIHandler();
+static pcb_PTR createProcess(ssi_create_process_t *arg, pcb_t *sender);
+static void terminateProcess(pcb_t *proc);
+static void terminateProgeny(pcb_t *p);
+static void destroyProcess(pcb_t *p);
 
 #endif
