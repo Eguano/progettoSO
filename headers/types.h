@@ -92,4 +92,10 @@ typedef struct ssi_do_io_t
     unsigned int commandValue;
 } ssi_do_io_t, *ssi_do_io_PTR;
 
+typedef struct ssi_end_io_t
+{
+    pcb_t *toUnblock;
+    unsigned int status;
+} ssi_end_io_t, *ssi_end_io_PTR;
+
 #endif

@@ -12,10 +12,12 @@
 extern void schedule();
 
 extern pcb_PTR current_process;
+extern int waiting_count;
 extern pcb_PTR ready_queue;
 extern pcb_PTR pseudoclock_blocked_list;
 extern pcb_PTR external_blocked_list[4][MAXDEV];
 extern pcb_PTR terminal_blocked_list[2][MAXDEV];
+extern pcb_PTR ssi_pcb;
 extern state_t *currentState;
 
 unsigned int interruptConsts[] = { LOCALTIMERINT, TIMERINTERRUPT, DISKINTERRUPT, FLASHINTERRUPT, PRINTINTERRUPT, TERMINTERRUPT };
@@ -28,7 +30,7 @@ unsigned short int intPendingInLine(unsigned int causeReg, unsigned short int li
 unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev);
 void PLTInterruptHandler();
 void ITInterruptHandler();
-void termDevInterruptHandler(pcb_PTR toUnblock, unsigned int *devStatusReg, unsigned int line, unsigned int dev);
-void extDevInterruptHandler(pcb_PTR toUnblock, unsigned int *devStatusReg, unsigned int line, unsigned int dev);
+pcb_PTR termDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, unsigned int dev);
+pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, unsigned int dev);
 
 #endif

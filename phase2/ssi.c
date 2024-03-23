@@ -32,54 +32,80 @@ void SSIRequest(pcb_t* sender, int service, void* arg) {
 void SSIHandler() {
   while (TRUE) {
     ssi_payload_t payload;
-    SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &payload, 0);
-    // processo mittente
-    pcb_PTR sender = (pcb_PTR) current_process->p_s.reg_v0;
+    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &payload, 0);
     // risposta da inviare al sender
     unsigned int response = (unsigned int) NULL;
 
     // esecuzione del servizio richiesto
-    if (payload.service_code == CREATEPROCESS) {
-      // creare un nuovo processo
-      // TODO: gestire il return NULL (se non alloca il processo) -> bisogna rispondere NOPROC
-      response = (unsigned int) createProcess((ssi_create_process_PTR) payload.arg, sender);
-    } else if (payload.service_code == TERMPROCESS) {
-      // eliminare un processo esistente
-      if (payload.arg == NULL) {
-        terminateProcess(sender);
-      } else {
-        terminateProcess(payload.arg);
-      }
-    } else if (payload.service_code == DOIO) {
-      // eseguire un input o output
-      // TODO: fare sezione 7.3, necessari interrupt
-    } else if (payload.service_code == GETTIME) {
-      // restituire accumulated processor time
-      response = (unsigned int) &(sender->p_time);
-    } else if (payload.service_code == CLOCKWAIT) {
-      // bloccare il processo per lo pseudoclock
-      insertProcQ(&pseudoclock_blocked_list->p_list, sender);
-      waiting_count++;
-      /* TODO: quando un processo è in attesa della receive, dove viene bloccato?
-      quando gli rispondo dove finisce? verificare se è da eliminare da altre liste*/
-    } else if (payload.service_code == GETSUPPORTPTR) {
-      // restituire la struttura di supporto
-      response = (unsigned int) sender->p_supportStruct;
-    } else if (payload.service_code == GETPROCESSID) {
-      // restituire il pid del sender o del suo genitore
-      if (payload.arg == 0) {
-        response = sender->p_pid;
-      } else {
-        if (sender->p_parent == NULL) {
-          response = 0;
+    switch (payload.service_code) {
+      case CREATEPROCESS:
+        // creare un nuovo processo
+        // TODO: gestire il return NULL (se non alloca il processo) -> bisogna rispondere NOPROC
+        response = (unsigned int) createProcess((ssi_create_process_PTR) payload.arg, sender);
+        process_count++;
+        break;
+      case TERMPROCESS:
+        // eliminare un processo esistente
+        if (payload.arg == NULL) {
+          terminateProcess(sender);
         } else {
-          response = sender->p_parent->p_pid;
+          terminateProcess(payload.arg);
         }
-      }
-    } else {
-      // codice non esiste, terminare processo richiedente e tutta la sua progenie
-      terminateProcess(sender);
+        break;
+      case DOIO:
+        // eseguire un input o output
+        int dev = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) / 10;
+        int devInstance = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) % 10;
+        if (dev == 4) {
+          // dispositivo terminale receiver
+          insertProcQ(&terminal_blocked_list[1][devInstance], sender);
+        } else if (dev == 5) {
+          // dispositivo terminale transmitter
+          insertProcQ(&terminal_blocked_list[0][devInstance], sender);
+        } else {
+          // dispositivo periferico
+          insertProcQ(&external_blocked_list[dev][devInstance], sender);
+        }
+        waiting_count++;
+        *((ssi_do_io_PTR) payload.arg)->commandAddr = ((ssi_do_io_PTR) payload.arg)->commandValue;
+        // TODO: interruptHandler deve mandare un messaggio con il risultato dell'operazione
+        break;
+      case GETTIME:
+        // restituire accumulated processor time
+        response = (unsigned int) &(sender->p_time);
+        break;
+      case CLOCKWAIT:
+        // bloccare il processo per lo pseudoclock
+        insertProcQ(&pseudoclock_blocked_list->p_list, sender);
+        waiting_count++;
+        break;
+      case GETSUPPORTPTR:
+        // restituire la struttura di supporto
+        response = (unsigned int) sender->p_supportStruct;
+        break;
+      case GETPROCESSID:
+        // restituire il pid del sender o del suo genitore
+        if (payload.arg == 0) {
+          response = sender->p_pid;
+        } else {
+          if (sender->p_parent == NULL) {
+            response = 0;
+          } else {
+            response = sender->p_parent->p_pid;
+          }
+        }
+        break;
+      case ENDIO:
+        // terminazione operazione IO
+        sender = ((ssi_end_io_PTR) payload.arg)->toUnblock;
+        response = ((ssi_end_io_PTR) payload.arg)->status;
+        break;
+      default:
+        // codice non esiste, terminare processo richiedente e tutta la sua progenie
+        terminateProcess(sender);
+        break;
     }
+
     SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
   }
 }
@@ -133,23 +159,53 @@ static void terminateProgeny(pcb_t *p) {
  * @param p processo da rimuovere dalle code
  */
 static void destroyProcess(pcb_t *p) {
-  // lo cerco nella ready queue
-  if (outProcQ(&ready_queue->p_list, p) == NULL) {
-    // se non è nella ready lo cerco tra i bloccati per lo pseudoclock
-    if (outProcQ(&pseudoclock_blocked_list->p_list, p) == NULL) {
-      // se non è per lo pseudoclock, è bloccato per un altro interrupt
-      int found = 0;
-      for (int i = 0; i < MAXDEV && found == 0; i++) {
-        if (outProcQ(&external_blocked_list[0][i]->p_list, p) != NULL) found = 1;
-        if (outProcQ(&external_blocked_list[1][i]->p_list, p) != NULL) found = 1;
-        if (outProcQ(&external_blocked_list[2][i]->p_list, p) != NULL) found = 1;
-        if (outProcQ(&external_blocked_list[3][i]->p_list, p) != NULL) found = 1;
-        if (outProcQ(&terminal_blocked_list[0][i]->p_list, p) != NULL) found = 1;
-        if (outProcQ(&terminal_blocked_list[1][i]->p_list, p) != NULL) found = 1;
+  if (!isInPCBFree_h(p)) {
+    // lo cerco nella ready queue
+    if (outProcQ(&ready_queue->p_list, p) == NULL) {
+      // se non è nella ready lo cerco tra i bloccati per lo pseudoclock
+      if (outProcQ(&pseudoclock_blocked_list->p_list, p) == NULL) {
+        // se non è per lo pseudoclock, è bloccato per un altro interrupt
+        int found = 0;
+        for (int i = 0; i < MAXDEV && found == 0; i++) {
+          if (outProcQ(&external_blocked_list[0][i]->p_list, p) != NULL) found = 1;
+          if (outProcQ(&external_blocked_list[1][i]->p_list, p) != NULL) found = 1;
+          if (outProcQ(&external_blocked_list[2][i]->p_list, p) != NULL) found = 1;
+          if (outProcQ(&external_blocked_list[3][i]->p_list, p) != NULL) found = 1;
+          if (outProcQ(&terminal_blocked_list[0][i]->p_list, p) != NULL) found = 1;
+          if (outProcQ(&terminal_blocked_list[1][i]->p_list, p) != NULL) found = 1;
+        }
       }
+      waiting_count--;
     }
-    waiting_count--;
+    freePcb(p);
+    process_count--;
   }
-  freePcb(p);
-  process_count--;
+}
+
+static int findDevice(memaddr *commandAddr) {
+  memaddr devRegAddr = *commandAddr - 0x4;
+  switch (devRegAddr) {
+    case START_DEVREG ... 0x100000C4:
+      return findInstance(devRegAddr - START_DEVREG);
+    case 0x100000D4 ... 0x10000144:
+      return 10 + findInstance(devRegAddr - 0x100000D4);
+    case 0x10000154 ... 0x100001C4:
+      return 20 + findInstance(devRegAddr - 0x10000154);
+    case 0x100001D4 ... 0x10000244:
+      return 30 + findInstance(devRegAddr - 0x100001D4);
+    case 0x10000254 ... 0x100002C4:
+      // TODO: per ora si usa solo il terminale 0 quindi rimando i controlli a più avanti per gli altri
+      if (devRegAddr == 0x10000254 || devRegAddr == 0x10000264 || devRegAddr == 0x10000274
+      || devRegAddr == 0x10000284 || devRegAddr == 0x10000294  || devRegAddr == 0x100002A4
+      || devRegAddr == 0x100002B4 || devRegAddr == 0x100002C4) {
+        // receiver
+        return 40;
+      } else {
+        return 50;
+      }
+  }
+}
+
+static int findInstance(memaddr distFromBase) {
+  return distFromBase / 0x00000010;
 }
