@@ -200,5 +200,7 @@
 
 // Max number of device's instances - definita da IVAN
 #define MAXDEV 8
+// service ssi to unblock process waiting for IO
+#define ENDIO 8
 
 #endif
