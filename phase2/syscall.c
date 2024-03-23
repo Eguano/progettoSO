@@ -6,6 +6,7 @@
 extern state_t *currentState;
 extern pcb_PTR ready_queue;
 extern pcb_PTR current_process;
+extern pcb_PTR pseudoclock_blocked_list;
 
 extern void schedule();
 extern void SSIRequest(pcb_t* sender, int service, void* arg);
@@ -54,36 +55,53 @@ void syscallHandler() {
 void sendMessage() {
     pcb_PTR receiver = (pcb_PTR)currentState->reg_a1;
     msg_PTR payload = (msg_PTR)currentState->reg_a2;
+    pcb_PTR iter;
     int messagePushed = 0;
 
     // Controlla se il processo destinatario è nella pcbFree_h list
     int inPcbFree_h = isInPCBFree_h(receiver);
     if(inPcbFree_h) {
         currentState->reg_v0 = DEST_NOT_EXIST;
-    }    
+    }  
 
     // Controlla se il processo destinatario è nella readyQueue
     int inReadyQueue = 0;
-    pcb_PTR iter;
-    list_for_each_entry(iter, &ready_queue->p_list, p_list) {
-        // Se il processo è nella readyQueue allora pusha il messaggio nella inbox
-        if(iter == receiver) {
-            inReadyQueue = 1;
-            pushMessage(&iter->msg_inbox, payload);
-            currentState->reg_v0 = OK;
-            messagePushed = 1;
+    if(!inPcbFree_h) {
+        list_for_each_entry(iter, &ready_queue->p_list, p_list) {
+            // Se il processo è nella readyQueue allora viene pushato il messaggio nella inbox
+            if(iter == receiver) {
+                inReadyQueue = 1;
+                pushMessage(&receiver->msg_inbox, payload);
+                messagePushed = 1;
+            }
         }
     }
-    // Se il processo non è nella readyQueue allora inseriscilo nella readyQueue e pusha il messaggio nella inbox
+
+    // Controlla se il processo destinatario è nella pseudoclockBlocked
+    int inPseudoClock = 0;
     if(!inReadyQueue && !inPcbFree_h) {
-        // 
+        list_for_each_entry(iter, &pseudoclock_blocked_list->p_list, p_list) {
+            // Se il processo è nella pseudoclockBlocked allora viene pushato il messaggio nella inbox senza metterlo in readyQueue
+            if(iter == receiver) {
+                inPseudoClock = 1;
+                pushMessage(&receiver->msg_inbox, payload);
+                messagePushed = 1;
+            }
+        }
+    }
+
+    // Il processo destinatario non è in nessuna delle precedenti liste, quindi viene messo in readyQueue e poi pushato il messaggio nella inbox
+    if(!inReadyQueue && !inPcbFree_h && !inPseudoClock) {
         insertProcQ(&ready_queue->p_list, receiver);
         pushMessage(&receiver->msg_inbox, payload);
-        currentState->reg_v0 = OK;
         messagePushed = 1;
     }
 
-    // Altrimenti ritorna MSGNOGOOD
+    // Se il messaggio è stato pushato correttamente nella inbox allora mettiamo in reg_v0 OK
+    if(messagePushed) {
+        currentState->reg_v0 = OK;
+    }
+    // Altrimenti mettiamo in reg_v0 MSGNOGOOD
     if(!messagePushed && !inPcbFree_h) {
         currentState->reg_v0 = MSGNOGOOD;
     }
@@ -91,7 +109,7 @@ void sendMessage() {
 
 
 /*
-    This system call is used by a process to extract a message from its inbox or, if this one is empty, to wait for a message
+    Estrae un messaggio dalla inbox o, se questa è vuota, attende un messaggio
 */
 void receiveMessage() {
     msg_PTR messageExtracted = NULL;
@@ -111,7 +129,7 @@ void receiveMessage() {
     } 
     // Il messaggio è stato trovato
     else {
-        // Memorizzare il payload del messaggio nella zona puntata da reg_a2
+        // Viene memorizzato il payload del messaggio nella zona puntata da reg_a2
         if(payload != (memaddr) NULL) {
             payload = messageExtracted->m_payload;
         }
