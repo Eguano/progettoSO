@@ -58,13 +58,13 @@ void SSIHandler() {
         int devInstance = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) % 10;
         if (dev == 4) {
           // dispositivo terminale receiver
-          insertProcQ(&terminal_blocked_list[1][devInstance], sender);
+          insertProcQ(&terminal_blocked_list[1][devInstance]->p_list, sender);
         } else if (dev == 5) {
           // dispositivo terminale transmitter
-          insertProcQ(&terminal_blocked_list[0][devInstance], sender);
+          insertProcQ(&terminal_blocked_list[0][devInstance]->p_list, sender);
         } else {
           // dispositivo periferico
-          insertProcQ(&external_blocked_list[dev][devInstance], sender);
+          insertProcQ(&external_blocked_list[dev][devInstance]->p_list, sender);
         }
         waiting_count++;
         *((ssi_do_io_PTR) payload.arg)->commandAddr = ((ssi_do_io_PTR) payload.arg)->commandValue;
@@ -203,6 +203,10 @@ static int findDevice(memaddr *commandAddr) {
       } else {
         return 50;
       }
+      break;
+    default:
+      return 0;
+      break;
   }
 }
 
