@@ -15,5 +15,7 @@ static pcb_PTR createProcess(ssi_create_process_t *arg, pcb_t *sender);
 static void terminateProcess(pcb_t *proc);
 static void terminateProgeny(pcb_t *p);
 static void destroyProcess(pcb_t *p);
+static int findDevice(memaddr *commandAddr);
+static int findInstance(memaddr distFromBase);
 
 #endif

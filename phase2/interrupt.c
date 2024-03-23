@@ -8,7 +8,7 @@ void interruptHandler() {
     unsigned int causeReg = currentState->cause;
 
     // Gli interrupt sono abilitati a livello globale
-    if(currentState->status & IECON == 1) {
+    if((currentState->status & IECON) == 1) {
 
         for(int line = 0; line < 6; line++) {
             // Se la line e' attiva
@@ -83,7 +83,7 @@ void interruptHandler() {
                                         };
 
                                         // TODO: c'è un modo per mandare messaggi senza usare SYSCALL()?
-                                        SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, &payload, 0);
+                                        SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&payload, 0);
 
                                         *((state_t *)BIOSDATAPAGE) = curStateBackup;    // scary
 
@@ -109,7 +109,7 @@ unsigned short int intLineActive(unsigned short int line) {
 }
 
 unsigned short int intPendingInLine(unsigned int causeReg, unsigned short int line) {
-    return (((causeReg & interruptConsts[line]) >> 8 + line) & 0x1) == 1;
+    return (((causeReg & interruptConsts[line]) >> (8 + line)) & 0x1) == 1;
 }
 
 unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev) {
@@ -126,7 +126,7 @@ void PLTInterruptHandler() {
 
 void ITInterruptHandler() {
     LDIT(PSECOND);
-    pcb_PTR it;
+    // pcb_PTR it; commentato da ivan
     while(emptyProcQ(&pseudoclock_blocked_list->p_list)) {
         pcb_PTR toUnblock = removeProcQ(&pseudoclock_blocked_list->p_list);
         waiting_count--;
@@ -146,13 +146,13 @@ pcb_PTR termDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, u
     // RICORDARSI CHE STATUS PUO' ANCHE SEGNALARE UN ERRORE
     if(devReg->transm_status == OKCHARTRANS) {
         // Salvo il registro transmitter status
-        devStatusReg = &devReg->transm_status;
+        *devStatusReg = devReg->transm_status;
         devReg->transm_command = ACK;
         selector = 0;
     }
     else if(devReg->recv_status == OKCHARTRANS) {
         // Salvo il registro reciever status
-        devStatusReg = &devReg->recv_status;
+        *devStatusReg = devReg->recv_status;
         devReg->recv_command = ACK;
         selector = 1;
     }
@@ -167,7 +167,7 @@ pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, un
     dtpreg_t *devReg = (dtpreg_t *)getDevReg(line, dev);
 
     // Salvo status e do l'ACK
-    devStatusReg = devReg->status;
+    *devStatusReg = devReg->status;
     devReg->command = ACK;
 
     // Mando un messaggio e sblocco il pcb che sta aspettando questo ext dev
