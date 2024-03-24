@@ -49,6 +49,7 @@ void exceptionHandler() {
         case 9 ... 12:
             // Breakpoint Calls, Program Traps p2
             passUpOrDie(GENERALEXCEPT);
+            break;
         default: 
             // Wrong ExcCode
             passUpOrDie(GENERALEXCEPT);
