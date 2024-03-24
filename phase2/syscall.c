@@ -4,9 +4,9 @@
 #include "../phase1/headers/msg.h"
 
 extern state_t *currentState;
-extern pcb_PTR ready_queue;
+extern struct list_head ready_queue;
 extern pcb_PTR current_process;
-extern pcb_PTR pseudoclock_blocked_list;
+extern struct list_head pseudoclock_blocked_list;
 
 extern void schedule();
 extern void SSIRequest(pcb_t* sender, int service, void* arg);
@@ -67,7 +67,7 @@ void sendMessage() {
     // Controlla se il processo destinatario è nella readyQueue
     int inReadyQueue = 0;
     if(!inPcbFree_h) {
-        list_for_each_entry(iter, &ready_queue->p_list, p_list) {
+        list_for_each_entry(iter, &ready_queue, p_list) {
             // Se il processo è nella readyQueue allora viene pushato il messaggio nella inbox
             if(iter == receiver) {
                 inReadyQueue = 1;
@@ -80,7 +80,7 @@ void sendMessage() {
     // Controlla se il processo destinatario è nella pseudoclockBlocked
     int inPseudoClock = 0;
     if(!inReadyQueue && !inPcbFree_h) {
-        list_for_each_entry(iter, &pseudoclock_blocked_list->p_list, p_list) {
+        list_for_each_entry(iter, &pseudoclock_blocked_list, p_list) {
             // Se il processo è nella pseudoclockBlocked allora viene pushato il messaggio nella inbox senza metterlo in readyQueue
             if(iter == receiver) {
                 inPseudoClock = 1;
@@ -92,7 +92,7 @@ void sendMessage() {
 
     // Il processo destinatario non è in nessuna delle precedenti liste, quindi viene messo in readyQueue e poi pushato il messaggio nella inbox
     if(!inReadyQueue && !inPcbFree_h && !inPseudoClock) {
-        insertProcQ(&ready_queue->p_list, receiver);
+        insertProcQ(&ready_queue, receiver);
         pushMessage(&receiver->msg_inbox, payload);
         messagePushed = 1;
     }

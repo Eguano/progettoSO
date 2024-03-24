@@ -59,7 +59,7 @@ void interruptHandler() {
                                         toUnblock->p_s.reg_v0 = devStatusReg;
 
                                         waiting_count--;
-                                        insertProcQ(&ready_queue->p_list, toUnblock);
+                                        insertProcQ(&ready_queue, toUnblock);
 
                                         LDST(currentState); // !!! da sostituire con schedule? */
 
@@ -119,7 +119,7 @@ unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev
 void PLTInterruptHandler() {
     setTIMER(TIMESLICE);
     current_process->p_s = *currentState;
-    insertProcQ(&ready_queue->p_list, current_process);
+    insertProcQ(&ready_queue, current_process);
     current_process = NULL;
     schedule();
 }
@@ -127,10 +127,10 @@ void PLTInterruptHandler() {
 void ITInterruptHandler() {
     LDIT(PSECOND);
     // pcb_PTR it; commentato da ivan
-    while(emptyProcQ(&pseudoclock_blocked_list->p_list)) {
-        pcb_PTR toUnblock = removeProcQ(&pseudoclock_blocked_list->p_list);
+    while(emptyProcQ(&pseudoclock_blocked_list)) {
+        pcb_PTR toUnblock = removeProcQ(&pseudoclock_blocked_list);
         waiting_count--;
-        insertProcQ(&ready_queue->p_list, toUnblock);
+        insertProcQ(&ready_queue, toUnblock);
     }
     if(current_process == NULL)
         schedule();
@@ -158,7 +158,7 @@ pcb_PTR termDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, u
     }
 
     // Uso selector per determinare se devo andare a prendere da un transmitter o un reciever
-    return removeProcQ(&terminal_blocked_list[selector][dev]->p_list);    
+    return removeProcQ(&terminal_blocked_list[selector][dev]);    
 
 }
 
@@ -171,5 +171,5 @@ pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, un
     devReg->command = ACK;
 
     // Mando un messaggio e sblocco il pcb che sta aspettando questo ext dev
-    return removeProcQ(&external_blocked_list[line-1][dev]->p_list);
+    return removeProcQ(&external_blocked_list[line-1][dev]);
 }

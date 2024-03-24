@@ -5,10 +5,10 @@
 extern int process_count;
 extern int waiting_count;
 extern pcb_PTR current_process;
-extern pcb_PTR ready_queue;
-extern pcb_PTR external_blocked_list[4][MAXDEV];
-extern pcb_PTR pseudoclock_blocked_list;
-extern pcb_PTR terminal_blocked_list[2][MAXDEV];
+extern struct list_head ready_queue;
+extern struct list_head external_blocked_list[4][MAXDEV];
+extern struct list_head pseudoclock_blocked_list;
+extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
 
 /**
@@ -58,13 +58,13 @@ void SSIHandler() {
         int devInstance = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) % 10;
         if (dev == 4) {
           // dispositivo terminale receiver
-          insertProcQ(&terminal_blocked_list[1][devInstance]->p_list, sender);
+          insertProcQ(&terminal_blocked_list[1][devInstance], sender);
         } else if (dev == 5) {
           // dispositivo terminale transmitter
-          insertProcQ(&terminal_blocked_list[0][devInstance]->p_list, sender);
+          insertProcQ(&terminal_blocked_list[0][devInstance], sender);
         } else {
           // dispositivo periferico
-          insertProcQ(&external_blocked_list[dev][devInstance]->p_list, sender);
+          insertProcQ(&external_blocked_list[dev][devInstance], sender);
         }
         waiting_count++;
         *((ssi_do_io_PTR) payload.arg)->commandAddr = ((ssi_do_io_PTR) payload.arg)->commandValue;
@@ -76,7 +76,7 @@ void SSIHandler() {
         break;
       case CLOCKWAIT:
         // bloccare il processo per lo pseudoclock
-        insertProcQ(&pseudoclock_blocked_list->p_list, sender);
+        insertProcQ(&pseudoclock_blocked_list, sender);
         waiting_count++;
         break;
       case GETSUPPORTPTR:
@@ -122,7 +122,7 @@ static pcb_PTR createProcess(ssi_create_process_t *arg, pcb_t *sender) {
   if (p != NULL) {
     p->p_s = *arg->state;
     p->p_supportStruct = arg->support;
-    insertProcQ(&ready_queue->p_list, p);
+    insertProcQ(&ready_queue, p);
     process_count++;
     insertChild(sender, p);
   }
@@ -161,18 +161,18 @@ static void terminateProgeny(pcb_t *p) {
 static void destroyProcess(pcb_t *p) {
   if (!isInPCBFree_h(p)) {
     // lo cerco nella ready queue
-    if (outProcQ(&ready_queue->p_list, p) == NULL) {
+    if (outProcQ(&ready_queue, p) == NULL) {
       // se non è nella ready lo cerco tra i bloccati per lo pseudoclock
-      if (outProcQ(&pseudoclock_blocked_list->p_list, p) == NULL) {
+      if (outProcQ(&pseudoclock_blocked_list, p) == NULL) {
         // se non è per lo pseudoclock, è bloccato per un altro interrupt
         int found = 0;
         for (int i = 0; i < MAXDEV && found == 0; i++) {
-          if (outProcQ(&external_blocked_list[0][i]->p_list, p) != NULL) found = 1;
-          if (outProcQ(&external_blocked_list[1][i]->p_list, p) != NULL) found = 1;
-          if (outProcQ(&external_blocked_list[2][i]->p_list, p) != NULL) found = 1;
-          if (outProcQ(&external_blocked_list[3][i]->p_list, p) != NULL) found = 1;
-          if (outProcQ(&terminal_blocked_list[0][i]->p_list, p) != NULL) found = 1;
-          if (outProcQ(&terminal_blocked_list[1][i]->p_list, p) != NULL) found = 1;
+          if (outProcQ(&external_blocked_list[0][i], p) != NULL) found = 1;
+          if (outProcQ(&external_blocked_list[1][i], p) != NULL) found = 1;
+          if (outProcQ(&external_blocked_list[2][i], p) != NULL) found = 1;
+          if (outProcQ(&external_blocked_list[3][i], p) != NULL) found = 1;
+          if (outProcQ(&terminal_blocked_list[0][i], p) != NULL) found = 1;
+          if (outProcQ(&terminal_blocked_list[1][i], p) != NULL) found = 1;
         }
       }
       waiting_count--;

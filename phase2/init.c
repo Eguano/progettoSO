@@ -24,13 +24,17 @@ void main() {
   // load Interval Timer 100ms
   LDIT(PSECOND);
 
+  debug = 1;
   // istantiate a first process
   ssi_pcb = allocPcb();
+  debug = 2;
   ssi_pcb->p_s.status = IEPON | IMON;
   RAMTOP(ssi_pcb->p_s.reg_sp);
+  debug = 3;
   ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9 = (memaddr) SSIHandler;
-  insertProcQ(&ready_queue->p_list, ssi_pcb);
+  insertProcQ(&ready_queue, ssi_pcb);
   process_count++;
+  debug = 4;
 
   // istantiate a second process
   p2test_pcb = allocPcb();
@@ -39,7 +43,7 @@ void main() {
   RAMTOP(p2test_pcb->p_s.reg_sp);
   p2test_pcb->p_s.reg_sp -= (2 * PAGESIZE);
   p2test_pcb->p_s.pc_epc = p2test_pcb->p_s.reg_t9 = (memaddr) test;
-  insertProcQ(&ready_queue->p_list, p2test_pcb);
+  insertProcQ(&ready_queue, p2test_pcb);
   process_count++;
 
   // call the scheduler
@@ -66,16 +70,16 @@ static void initialize() {
   process_count = 0;
   waiting_count = 0;
   current_process = NULL;
-  mkEmptyProcQ(&ready_queue->p_list);
+  mkEmptyProcQ(&ready_queue);
   for (int i = 0; i < MAXDEV; i++) {
     // external
-    mkEmptyProcQ(&external_blocked_list[0][i]->p_list);
-    mkEmptyProcQ(&external_blocked_list[1][i]->p_list);
-    mkEmptyProcQ(&external_blocked_list[2][i]->p_list);
-    mkEmptyProcQ(&external_blocked_list[3][i]->p_list);
+    mkEmptyProcQ(&external_blocked_list[0][i]);
+    mkEmptyProcQ(&external_blocked_list[1][i]);
+    mkEmptyProcQ(&external_blocked_list[2][i]);
+    mkEmptyProcQ(&external_blocked_list[3][i]);
     // terminal
-    mkEmptyProcQ(&terminal_blocked_list[0][i]->p_list);
-    mkEmptyProcQ(&terminal_blocked_list[1][i]->p_list);
+    mkEmptyProcQ(&terminal_blocked_list[0][i]);
+    mkEmptyProcQ(&terminal_blocked_list[1][i]);
   }
-  mkEmptyProcQ(&pseudoclock_blocked_list->p_list);
+  mkEmptyProcQ(&pseudoclock_blocked_list);
 }
