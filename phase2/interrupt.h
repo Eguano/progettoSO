@@ -13,10 +13,10 @@ extern void schedule();
 
 extern pcb_PTR current_process;
 extern int waiting_count;
-extern pcb_PTR ready_queue;
-extern pcb_PTR pseudoclock_blocked_list;
-extern pcb_PTR external_blocked_list[4][MAXDEV];
-extern pcb_PTR terminal_blocked_list[2][MAXDEV];
+extern struct list_head ready_queue;
+extern struct list_head pseudoclock_blocked_list;
+extern struct list_head external_blocked_list[4][MAXDEV];
+extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
 extern state_t *currentState;
 
