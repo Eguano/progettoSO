@@ -5,6 +5,7 @@
 extern void passUpOrDie(int);
 extern void interruptHandler();
 extern void syscallHandler();
+extern int debug;
 
 // TODO: questo deve essere aggiornato ogni volta che c'è un'eccezione?
 state_t *currentState = (state_t *)BIOSDATAPAGE; 
@@ -14,10 +15,12 @@ state_t *currentState = (state_t *)BIOSDATAPAGE;
  * virtuale che non ha un corrispettivo nella TLB
  */
 void uTLB_RefillHandler() {
+    debug = 100;
     setENTRYHI(0x80000000);
     setENTRYLO(0x00000000);
     TLBWR();
     LDST((state_t*) 0x0FFFF000);
+    debug = 101;
 }
 
 /**
@@ -25,6 +28,7 @@ void uTLB_RefillHandler() {
  * 
  */
 void exceptionHandler() {
+    debug = 102;
     switch((getCAUSE() & GETEXECCODE) >> CAUSESHIFT) {
         case IOINTERRUPTS:
             // External Device Interrupt
@@ -50,17 +54,20 @@ void exceptionHandler() {
             passUpOrDie(GENERALEXCEPT);
             break;
 	}
+    debug = 103;
 }
 
 /*
     Funzione per copiare strutture
 */
 void memcpy(memaddr *src, memaddr *dest, unsigned int bytes) {
+    debug = 104;
     for(int i = 0; i < (bytes/4); i++){
         *dest = *src;
         dest++;
         src++;
     }
+    debug = 105;
 }
 
 /*

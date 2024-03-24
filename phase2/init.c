@@ -20,31 +20,31 @@ extern void test();
 void main() {
   // nucleus initialization
   initialize();
+  debug = 200;
 
   // load Interval Timer 100ms
   LDIT(PSECOND);
+  debug = 201;
 
-  debug = 1;
   // istantiate a first process
   ssi_pcb = allocPcb();
-  debug = 2;
-  ssi_pcb->p_s.status = IEPON | IMON;
+  ssi_pcb->p_s.status |= IEPON | IMON;
   RAMTOP(ssi_pcb->p_s.reg_sp);
-  debug = 3;
   ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9 = (memaddr) SSIHandler;
   insertProcQ(&ready_queue, ssi_pcb);
   process_count++;
-  debug = 4;
+  debug = 202;
 
   // istantiate a second process
   p2test_pcb = allocPcb();
-  p2test_pcb->p_s.status = IEPON | IMON | TEBITON;
+  p2test_pcb->p_s.status |= IEPON | IMON | TEBITON;
   // TODO: possibile errore nel settaggio di RAMTOP
   RAMTOP(p2test_pcb->p_s.reg_sp);
   p2test_pcb->p_s.reg_sp -= (2 * PAGESIZE);
   p2test_pcb->p_s.pc_epc = p2test_pcb->p_s.reg_t9 = (memaddr) test;
   insertProcQ(&ready_queue, p2test_pcb);
   process_count++;
+  debug = 203;
 
   // call the scheduler
   schedule();
@@ -55,16 +55,19 @@ void main() {
  * le variabili globali
  */
 static void initialize() {
+  debug = 204;
   // Pass Up Vector for Processor 0
   passupvector_t *passUpVec = (passupvector_t *) PASSUPVECTOR;
   passUpVec->tlb_refill_handler = (memaddr) uTLB_RefillHandler;
   passUpVec->tlb_refill_stackPtr = (memaddr) KERNELSTACK;
   passUpVec->exception_handler = (memaddr) exceptionHandler;
   passUpVec->exception_stackPtr = (memaddr) KERNELSTACK;
+  debug = 205;
 
   // level 2 structures
   initPcbs();
   initMsgs();
+  debug = 206;
 
   // initialize variables
   process_count = 0;
@@ -82,4 +85,5 @@ static void initialize() {
     mkEmptyProcQ(&terminal_blocked_list[1][i]);
   }
   mkEmptyProcQ(&pseudoclock_blocked_list);
+  debug = 206;
 }

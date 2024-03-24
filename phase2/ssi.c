@@ -10,6 +10,7 @@ extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
+extern int debug;
 
 /**
  * Invia una richiesta all'SSI
@@ -19,94 +20,133 @@ extern pcb_PTR ssi_pcb;
  * @param arg parametro per il servizio (se necessario)
  */
 void SSIRequest(pcb_t* sender, int service, void* arg) {
+  debug = 500;
   ssi_payload_t payload = {service, arg};
   SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
+  debug = 501;
   // se non è OK il processo ssi non esiste -> emergency shutdown
   if (sender->p_s.reg_v0 != OK) PANIC();
+  debug = 502;
   SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) sender, 0);
+  debug = 503;
 }
 
 /**
  * Gestisce una richiesta ricevuta da un processo
  */
 void SSIHandler() {
+  debug = 504;
   while (TRUE) {
+    debug = 505;
     ssi_payload_t payload;
     pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &payload, 0);
+    debug = 506;
     // risposta da inviare al sender
     unsigned int response = (unsigned int) NULL;
 
     // esecuzione del servizio richiesto
     switch (payload.service_code) {
       case CREATEPROCESS:
+        debug = 507;
         // creare un nuovo processo
         // TODO: gestire il return NULL (se non alloca il processo) -> bisogna rispondere NOPROC
         response = (unsigned int) createProcess((ssi_create_process_PTR) payload.arg, sender);
         process_count++;
+        debug = 508;
         break;
       case TERMPROCESS:
+        debug = 509;
         // eliminare un processo esistente
         if (payload.arg == NULL) {
+          debug = 510;
           terminateProcess(sender);
         } else {
+          debug = 511;
           terminateProcess(payload.arg);
         }
+        debug = 512;
         break;
       case DOIO:
+        debug = 513;
         // eseguire un input o output
         int dev = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) / 10;
+        debug = 514;
         int devInstance = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) % 10;
+        debug = 515;
         if (dev == 4) {
+          debug = 516;
           // dispositivo terminale receiver
           insertProcQ(&terminal_blocked_list[1][devInstance], sender);
         } else if (dev == 5) {
+          debug = 517;
           // dispositivo terminale transmitter
           insertProcQ(&terminal_blocked_list[0][devInstance], sender);
         } else {
+          debug = 518;
           // dispositivo periferico
           insertProcQ(&external_blocked_list[dev][devInstance], sender);
         }
         waiting_count++;
+        debug = 519;
         *((ssi_do_io_PTR) payload.arg)->commandAddr = ((ssi_do_io_PTR) payload.arg)->commandValue;
+        debug = 520;
         // TODO: interruptHandler deve mandare un messaggio con il risultato dell'operazione
         break;
       case GETTIME:
+        debug = 521;
         // restituire accumulated processor time
-        response = (unsigned int) &(sender->p_time);
+        response = (unsigned int) sender->p_time + (TIMESLICE - getTIMER());
+        debug = 522;
         break;
       case CLOCKWAIT:
+        debug = 523;
         // bloccare il processo per lo pseudoclock
         insertProcQ(&pseudoclock_blocked_list, sender);
         waiting_count++;
+        debug = 524;
         break;
       case GETSUPPORTPTR:
+        debug = 525;
         // restituire la struttura di supporto
         response = (unsigned int) sender->p_supportStruct;
+        debug = 526;
         break;
       case GETPROCESSID:
+        debug = 527;
         // restituire il pid del sender o del suo genitore
         if (payload.arg == 0) {
+          debug = 528;
           response = sender->p_pid;
         } else {
+          debug = 529;
           if (sender->p_parent == NULL) {
+            debug = 530;
             response = 0;
           } else {
+            debug = 531;
             response = sender->p_parent->p_pid;
           }
         }
+        debug = 532;
         break;
       case ENDIO:
+        debug = 533;
         // terminazione operazione IO
         sender = ((ssi_end_io_PTR) payload.arg)->toUnblock;
         response = ((ssi_end_io_PTR) payload.arg)->status;
+        debug = 534;
         break;
       default:
+        debug = 535;
         // codice non esiste, terminare processo richiedente e tutta la sua progenie
         terminateProcess(sender);
+        debug = 536;
         break;
     }
+    debug = 537;
 
     SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
+    debug = 538;
   }
 }
 
@@ -175,6 +215,7 @@ static void destroyProcess(pcb_t *p) {
           if (outProcQ(&terminal_blocked_list[1][i], p) != NULL) found = 1;
         }
       }
+      // TODO: se viene terminato un processo in attesa per una receive ma non per un dispositivo, waiting_count non va decrementato: gestire in caso di problemi nel test
       waiting_count--;
     }
     freePcb(p);

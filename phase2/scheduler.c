@@ -4,6 +4,7 @@ extern int process_count;
 extern int waiting_count;
 extern pcb_PTR current_process;
 extern struct list_head ready_queue;
+extern int debug;
 
 extern int emptyProcQ(struct list_head *head);
 extern pcb_t *removeProcQ(struct list_head *head);
@@ -14,18 +15,24 @@ extern pcb_t *removeProcQ(struct list_head *head);
  * viene svolto dall'interrupt handler
  */
 void schedule() {
+  debug = 400;
   if (emptyProcQ(&ready_queue)) {
+    debug = 401;
     if (process_count == 1) {
+      debug = 402;
       // only SSI in the system
       HALT();
     } else if (process_count > 0 && waiting_count > 0) {
+      debug = 403;
       // waiting for an interrupt
       setSTATUS((getSTATUS() | IECON | IMON) & !TEBITON);
       WAIT();
     } else if (process_count > 0 && waiting_count == 0) {
+      debug = 404;
       // deadlock
       PANIC();
     }
+    debug = 405;
   }
   /* nuovo processo dopo i controlli in modo che in caso di WAIT
   nel momento in cui si riparte si possa caricare il processo */
@@ -33,6 +40,8 @@ void schedule() {
   current_process = removeProcQ(&ready_queue);
   // load the PLT
   setTIMER(TIMESLICE);
+  debug = 406;
   // perform Load Processor State
   LDST(&current_process->p_s);
+  debug = 407;
 }
