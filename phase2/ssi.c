@@ -22,10 +22,10 @@ extern int debug;
 void SSIRequest(pcb_t* sender, int service, void* arg) {
   debug = 500;
   ssi_payload_t payload = {service, arg};
-  SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
+  int reply = SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
   debug = 501;
   // se non è OK il processo ssi non esiste -> emergency shutdown
-  if (sender->p_s.reg_v0 != OK) PANIC();
+  if (reply == DEST_NOT_EXIST) PANIC();
   debug = 502;
   SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) sender, 0);
   debug = 503;
