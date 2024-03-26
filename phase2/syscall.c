@@ -3,14 +3,19 @@
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/msg.h"
 
+// #include "../klog.c"
+
 extern state_t *currentState;
 extern struct list_head ready_queue;
 extern pcb_PTR current_process;
 extern struct list_head pseudoclock_blocked_list;
 extern int debug;
+unsigned int debugMsg;
+unsigned int debugMsg2;
 
 extern void schedule();
-extern void SSIRequest(pcb_t* sender, int service, void* arg);
+
+// TODO: fare il LDST dopo aver finito le operazioni di handling?
 
 // TODO: SPOSTARE RICERCA DEL PCB NELLA FREELIST
 
@@ -71,7 +76,7 @@ void syscallHandler() {
 void sendMessage() {
     debug = 615;
     pcb_PTR receiver = (pcb_PTR)currentState->reg_a1;
-    msg_PTR payload = (msg_PTR)currentState->reg_a2;
+    unsigned int payload = currentState->reg_a2;
     pcb_PTR iter;
     int messagePushed = 0;
 
@@ -84,9 +89,21 @@ void sendMessage() {
     }
     debug = 618;
 
+    // controlla se il processo destinatario è quello in esecuzione (auto-messaggio)
+    int isCurrent = 0;
+    if (!inPcbFree_h && receiver == current_process) {
+        isCurrent = 1;
+        msg_t toPush = {
+            .m_sender = current_process,
+            .m_payload = payload,
+        };
+        pushMessage(&receiver->msg_inbox, &toPush);
+        messagePushed = 1;
+    }
+
     // Controlla se il processo destinatario è nella readyQueue
     int inReadyQueue = 0;
-    if(!inPcbFree_h) {
+    if(!inPcbFree_h && !isCurrent) {
         debug = 619;
         list_for_each_entry(iter, &ready_queue, p_list) {
             debug = 620;
@@ -94,7 +111,11 @@ void sendMessage() {
             if(iter == receiver) {
                 debug = 621;
                 inReadyQueue = 1;
-                pushMessage(&receiver->msg_inbox, payload);
+                msg_t toPush = {
+                    .m_sender = current_process,
+                    .m_payload = payload,
+                };
+                pushMessage(&receiver->msg_inbox, &toPush);
                 debug = 622;
                 messagePushed = 1;
             }
@@ -106,7 +127,7 @@ void sendMessage() {
 
     // Controlla se il processo destinatario è nella pseudoclockBlocked
     int inPseudoClock = 0;
-    if(!inReadyQueue && !inPcbFree_h) {
+    if(!inReadyQueue && !inPcbFree_h && !isCurrent) {
         debug = 626;
         list_for_each_entry(iter, &pseudoclock_blocked_list, p_list) {
             debug = 627;
@@ -114,7 +135,11 @@ void sendMessage() {
             if(iter == receiver) {
                 debug = 628;
                 inPseudoClock = 1;
-                pushMessage(&receiver->msg_inbox, payload);
+                msg_t toPush = {
+                    .m_sender = current_process,
+                    .m_payload = payload,
+                };
+                pushMessage(&receiver->msg_inbox, &toPush);
                 messagePushed = 1;
                 debug = 629;
             }
@@ -124,12 +149,18 @@ void sendMessage() {
     }
     debug = 632;
 
-    // Il processo destinatario non è in nessuna delle precedenti liste, quindi viene messo in readyQueue e poi pushato il messaggio nella inbox
-    if(!inReadyQueue && !inPcbFree_h && !inPseudoClock) {
+    // TODO: perchè non controlla le liste dei device terminali ed esterni?
+
+    // Il processo destinatario non è in nessuna delle precedenti liste, quindi era stato sbloccato dalle liste di attesa per device: viene messo in readyQueue e poi pushato il messaggio nella inbox
+    if(!inReadyQueue && !inPcbFree_h && !inPseudoClock && !isCurrent) {
         debug = 633;
-        insertProcQ(&ready_queue, receiver);
-        pushMessage(&receiver->msg_inbox, payload);
+        msg_t toPush = {
+            .m_sender = current_process,
+            .m_payload = payload,
+        };
+        pushMessage(&receiver->msg_inbox, &toPush);
         messagePushed = 1;
+        insertProcQ(&ready_queue, receiver);
         debug = 634;
     }
     debug = 635;
@@ -146,6 +177,10 @@ void sendMessage() {
         currentState->reg_v0 = MSGNOGOOD;
     }
     debug = 639;
+
+    debugMsg2 = (memaddr) current_process->msg_inbox.next;
+
+    LDST(currentState);
 }
 
 
@@ -155,14 +190,11 @@ void sendMessage() {
 void receiveMessage() {
     debug = 640;
     msg_PTR messageExtracted = NULL;
+    // colui da cui voglio ricevere
     pcb_PTR sender = (pcb_PTR)currentState->reg_a1;
+    // TODO: payload dovrebbe essere un puntatore ad unsigned int ?
     unsigned int payload = currentState->reg_a2;
 
-    debug = 641;
-    if(sender == ANYMESSAGE) {
-        debug = 642;
-        sender = NULL;
-    }
     debug = 643;
     messageExtracted = popMessage(&current_process->msg_inbox, sender);
     debug = 644;
@@ -170,7 +202,9 @@ void receiveMessage() {
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
         debug = 645;
+        // TODO: usare STST? da libumps.h
         current_process->p_s = *currentState;
+        // TODO: il timer in teoria va in discesa, controllare incremento del p_time
         current_process->p_time += getTIMER();
         schedule();
         debug = 646;
@@ -181,6 +215,7 @@ void receiveMessage() {
         // Viene memorizzato il payload del messaggio nella zona puntata da reg_a2
         if(payload != (memaddr) NULL) {
             debug = 648;
+            // TODO: controllare memorizzazione del payload
             payload = messageExtracted->m_payload;
         }
         debug = 649;
@@ -193,7 +228,10 @@ void receiveMessage() {
         debug = 651;
     }
     debug = 652;
-  
+
+    debugMsg = (memaddr) messageExtracted;
+    
+    LDST(currentState);
 }
 
 
@@ -214,8 +252,7 @@ void passUpOrDie(int indexValue) {
     }
     // Or die
     else {
-        debug = 655;
-        SSIRequest(current_process, TERMPROCESS, NULL);
+        // TODO: chiedere all'ssi la terminazione oppure usare le sue funzioni per terminare qui (seconda opzione preferibile)
     }
     debug = 656;
 }
