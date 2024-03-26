@@ -180,7 +180,6 @@ void test()
 
     // test send and receive
     SYSCALL(SENDMESSAGE, (unsigned int)test_pcb, 0, 0);
-    klog_print("ASBREGAFIOI\n");
     pcb_PTR sender = (pcb_PTR)SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
 
     if (sender != test_pcb)
@@ -194,6 +193,7 @@ void test()
 
     // create print process
     print_pcb = create_process(&printstate);
+    klog_print("ASBREGAFIOI\n");
 
     if ((int)print_pcb == NOPROC)
         PANIC();

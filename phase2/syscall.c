@@ -3,8 +3,6 @@
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/msg.h"
 
-// #include "../klog.c"
-
 extern state_t *currentState;
 extern struct list_head ready_queue;
 extern pcb_PTR current_process;
@@ -14,10 +12,6 @@ unsigned int debugMsg;
 unsigned int debugMsg2;
 
 extern void schedule();
-
-// TODO: fare il LDST dopo aver finito le operazioni di handling?
-
-// TODO: SPOSTARE RICERCA DEL PCB NELLA FREELIST
 
 void syscallHandler() {
     debug = 600;
@@ -178,7 +172,7 @@ void sendMessage() {
     }
     debug = 639;
 
-    debugMsg2 = (memaddr) current_process->msg_inbox.next;
+    debugMsg2 = (memaddr) headMessage(&current_process->msg_inbox);
 
     LDST(currentState);
 }
@@ -223,13 +217,13 @@ void receiveMessage() {
         // Carica in reg_v0 il processo mittente
         currentState->reg_v0 = (memaddr) messageExtracted->m_sender;
 
+        debugMsg = (memaddr) messageExtracted;
+
         debug = 650;
-        freeMsg(messageExtracted);
+        // freeMsg(messageExtracted);
         debug = 651;
     }
     debug = 652;
-
-    debugMsg = (memaddr) messageExtracted;
     
     LDST(currentState);
 }
