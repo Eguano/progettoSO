@@ -18,6 +18,7 @@
 #include "../headers/const.h"
 #include "../headers/types.h"
 #include <umps/libumps.h>
+#include "../klog.c"
 
 typedef unsigned int devregtr;
 
@@ -192,6 +193,7 @@ void test()
 
     // create print process
     print_pcb = create_process(&printstate);
+    klog_print("ASBREGAFIOI\n");
 
     if ((int)print_pcb == NOPROC)
         PANIC();
