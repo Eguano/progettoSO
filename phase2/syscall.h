@@ -14,4 +14,6 @@ void receiveMessage();
 
 void passUpOrDie(int);
 
+static msg_PTR createMessage(pcb_PTR sender, unsigned int payload);
+
 #endif

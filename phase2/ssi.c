@@ -12,24 +12,7 @@ extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
 extern int debug;
 
-/**
- * Invia una richiesta all'SSI
- * 
- * @param sender area dove salvare la risposta
- * @param service codice per il servizio richiesto
- * @param arg parametro per il servizio (se necessario)
- */
-void SSIRequest(pcb_t* sender, int service, void* arg) {
-  debug = 500;
-  ssi_payload_t payload = {service, arg};
-  int reply = SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
-  debug = 501;
-  // se non è OK il processo ssi non esiste -> emergency shutdown
-  if (reply == DEST_NOT_EXIST) PANIC();
-  debug = 502;
-  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) sender, 0);
-  debug = 503;
-}
+extern void klog_print(char *str);
 
 /**
  * Gestisce una richiesta ricevuta da un processo
@@ -38,40 +21,39 @@ void SSIHandler() {
   debug = 504;
   while (TRUE) {
     debug = 505;
-    ssi_payload_t payload;
-    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &payload, 0);
+    ssi_payload_PTR p_payload;
+    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
     debug = 506;
     // risposta da inviare al sender
     unsigned int response = (unsigned int) NULL;
 
     // esecuzione del servizio richiesto
-    switch (payload.service_code) {
+    switch (p_payload->service_code) {
       case CREATEPROCESS:
-        debug = 507;
         // creare un nuovo processo
-        // TODO: gestire il return NULL (se non alloca il processo) -> bisogna rispondere NOPROC
-        response = (unsigned int) createProcess((ssi_create_process_PTR) payload.arg, sender);
-        process_count++;
+        debug = 507;
+        response = createProcess((ssi_create_process_PTR) p_payload->arg, sender);
         debug = 508;
         break;
       case TERMPROCESS:
-        debug = 509;
         // eliminare un processo esistente
-        if (payload.arg == NULL) {
+        debug = 509;
+        if (p_payload->arg == NULL) {
           debug = 510;
           terminateProcess(sender);
         } else {
           debug = 511;
-          terminateProcess(payload.arg);
+          terminateProcess(p_payload->arg);
         }
         debug = 512;
         break;
       case DOIO:
-        debug = 513;
         // eseguire un input o output
-        int dev = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) / 10;
+        // TODO: togliere processo che ha fatto richiesta dalla lista in cui si trova
+        debug = 513;
+        int dev = findDevice(((ssi_do_io_PTR) p_payload->arg)->commandAddr) / 10;
         debug = 514;
-        int devInstance = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) % 10;
+        int devInstance = findDevice(((ssi_do_io_PTR) p_payload->arg)->commandAddr) % 10;
         debug = 515;
         if (dev == 4) {
           debug = 516;
@@ -88,33 +70,33 @@ void SSIHandler() {
         }
         waiting_count++;
         debug = 519;
-        *((ssi_do_io_PTR) payload.arg)->commandAddr = ((ssi_do_io_PTR) payload.arg)->commandValue;
+        *((ssi_do_io_PTR) p_payload->arg)->commandAddr = ((ssi_do_io_PTR) p_payload->arg)->commandValue;
         debug = 520;
         // TODO: interruptHandler deve mandare un messaggio con il risultato dell'operazione
         break;
       case GETTIME:
-        debug = 521;
         // restituire accumulated processor time
+        debug = 521;
         response = (unsigned int) sender->p_time + (TIMESLICE - getTIMER());
         debug = 522;
         break;
       case CLOCKWAIT:
-        debug = 523;
         // bloccare il processo per lo pseudoclock
+        debug = 523;
         insertProcQ(&pseudoclock_blocked_list, sender);
         waiting_count++;
         debug = 524;
         break;
       case GETSUPPORTPTR:
-        debug = 525;
         // restituire la struttura di supporto
+        debug = 525;
         response = (unsigned int) sender->p_supportStruct;
         debug = 526;
         break;
       case GETPROCESSID:
-        debug = 527;
         // restituire il pid del sender o del suo genitore
-        if (payload.arg == 0) {
+        debug = 527;
+        if (p_payload->arg == 0) {
           debug = 528;
           response = sender->p_pid;
         } else {
@@ -130,21 +112,20 @@ void SSIHandler() {
         debug = 532;
         break;
       case ENDIO:
-        debug = 533;
         // terminazione operazione IO
-        sender = ((ssi_end_io_PTR) payload.arg)->toUnblock;
-        response = ((ssi_end_io_PTR) payload.arg)->status;
+        debug = 533;
+        sender = ((ssi_end_io_PTR) p_payload->arg)->toUnblock;
+        response = ((ssi_end_io_PTR) p_payload->arg)->status;
         debug = 534;
         break;
       default:
-        debug = 535;
         // codice non esiste, terminare processo richiedente e tutta la sua progenie
+        debug = 535;
         terminateProcess(sender);
         debug = 536;
         break;
     }
     debug = 537;
-
     SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
     debug = 538;
   }
@@ -155,18 +136,20 @@ void SSIHandler() {
  * 
  * @param arg struttura contenente state e support (eventuale)
  * @param sender processo richiedente
- * @return puntatore al processo creato, NULL altrimenti
+ * @return puntatore al processo creato, NOPROC altrimenti
  */
-static pcb_PTR createProcess(ssi_create_process_t *arg, pcb_t *sender) {
+static unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
   pcb_PTR p = allocPcb();
-  if (p != NULL) {
-    p->p_s = *arg->state;
-    p->p_supportStruct = arg->support;
+  if (p == NULL) {
+    return (unsigned int) NOPROC;
+  } else {
+    p->p_s = *(arg->state);
+    if (arg->support != NULL) p->p_supportStruct = arg->support;
+    insertChild(sender, p);
     insertProcQ(&ready_queue, p);
     process_count++;
-    insertChild(sender, p);
+    return (unsigned int) p;
   }
-  return p;
 }
 
 /**
@@ -174,7 +157,7 @@ static pcb_PTR createProcess(ssi_create_process_t *arg, pcb_t *sender) {
  * 
  * @param proc processo da eliminare
  */
-static void terminateProcess(pcb_t *proc) {
+void terminateProcess(pcb_t *proc) {
   outChild(proc);
   if (!emptyChild(proc)) terminateProgeny(proc);
   destroyProcess(proc);
