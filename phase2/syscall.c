@@ -198,8 +198,7 @@ void receiveMessage() {
         debug = 645;
         // TODO: usare STST? da libumps.h
         current_process->p_s = *currentState;
-        // TODO: il timer in teoria va in discesa, controllare incremento del p_time
-        current_process->p_time += getTIMER();
+	    current_process->p_time += (TIMESLICE - getTIMER());
         schedule();
         debug = 646;
     } 

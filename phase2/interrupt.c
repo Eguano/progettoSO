@@ -164,6 +164,7 @@ void PLTInterruptHandler() {
     insertProcQ(&ready_queue, current_process);
     debug = 340;
     current_process = NULL;
+    current_process->p_time += (TIMESLICE - getTIMER());
     schedule();
     debug = 341;
 }
