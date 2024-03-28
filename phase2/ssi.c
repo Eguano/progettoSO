@@ -9,8 +9,6 @@ extern struct list_head ready_queue;
 extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
-extern pcb_PTR ssi_pcb;
-extern pcb_PTR p2test_pcb;
 
 extern int debug;
 extern void klog_print(char *str);
@@ -32,7 +30,6 @@ void SSIHandler() {
     switch (p_payload->service_code) {
       case CREATEPROCESS:
         // creare un nuovo processo
-        klog_print("VAMOOOSSS");
         debug = 507;
         response = createProcess((ssi_create_process_PTR) p_payload->arg, sender);
         debug = 508;
@@ -145,7 +142,43 @@ static unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
   if (p == NULL) {
     return (unsigned int) NOPROC;
   } else {
-    p->p_s = *arg->state;
+    p->p_s.cause = arg->state->cause;
+    p->p_s.entry_hi = arg->state->entry_hi;
+    p->p_s.reg_at = arg->state->reg_at;
+    p->p_s.reg_v0 = arg->state->reg_v0;
+    p->p_s.reg_v1 = arg->state->reg_v1;
+    p->p_s.reg_a0 = arg->state->reg_a0;
+    p->p_s.reg_a1 = arg->state->reg_a1;
+    p->p_s.reg_a2 = arg->state->reg_a2;
+    p->p_s.reg_a3 = arg->state->reg_a3;
+    p->p_s.reg_t0 = arg->state->reg_t0;
+    p->p_s.reg_t1 = arg->state->reg_t1;
+    p->p_s.reg_t2 = arg->state->reg_t2;
+    p->p_s.reg_t3 = arg->state->reg_t3;
+    p->p_s.reg_t4 = arg->state->reg_t4;
+    p->p_s.reg_t5 = arg->state->reg_t5;
+    p->p_s.reg_t6 = arg->state->reg_t6;
+    p->p_s.reg_t7 = arg->state->reg_t7;
+    p->p_s.reg_s0 = arg->state->reg_s0;
+    p->p_s.reg_s1 = arg->state->reg_s1;
+    p->p_s.reg_s2 = arg->state->reg_s2;
+    p->p_s.reg_s3 = arg->state->reg_s3;
+    p->p_s.reg_s4 = arg->state->reg_s4;
+    p->p_s.reg_s5 = arg->state->reg_s5;
+    p->p_s.reg_s6 = arg->state->reg_s6;
+    p->p_s.reg_s7 = arg->state->reg_s7;
+    p->p_s.reg_t8 = arg->state->reg_t8;
+    p->p_s.reg_t9 = arg->state->reg_t9;
+    p->p_s.reg_gp = arg->state->reg_gp;
+    p->p_s.reg_sp = arg->state->reg_sp;
+    p->p_s.reg_fp = arg->state->reg_fp;
+    p->p_s.reg_ra = arg->state->reg_ra;
+    p->p_s.reg_HI = arg->state->reg_HI;
+    p->p_s.reg_LO = arg->state->reg_LO;
+    p->p_s.hi = arg->state->hi;
+    p->p_s.lo = arg->state->lo;
+    p->p_s.pc_epc = arg->state->pc_epc;
+    p->p_s.status = arg->state->status;
     if (arg->support != NULL) p->p_supportStruct = arg->support;
     insertChild(sender, p);
     insertProcQ(&ready_queue, p);

@@ -168,7 +168,6 @@ void receiveMessage() {
     msg_PTR messageExtracted = NULL;
     // colui da cui voglio ricevere
     pcb_PTR sender = (pcb_PTR)currentState->reg_a1;
-    // TODO: payload dovrebbe essere un puntatore ad unsigned int ?
     memaddr *payload = (memaddr*) currentState->reg_a2;
 
     debug = 643;
@@ -178,14 +177,13 @@ void receiveMessage() {
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
         debug = 645;
-        // TODO: verificare se funziona davvero
+        // TODO: sostituire con copia manuale dei registri
         current_process->p_s = *currentState;
         current_process->p_s.reg_a0 = RECEIVEMESSAGE;
         // TODO: il timer in teoria va in discesa, controllare incremento del p_time
         current_process->p_time += getTIMER();
-        // TODO: current_process = NULL; ??? serve forse
+        current_process = NULL;
         schedule();
-        debug = 646;
     } 
     // Il messaggio è stato trovato
     else {
@@ -193,7 +191,6 @@ void receiveMessage() {
         // Viene memorizzato il payload del messaggio nella zona puntata da reg_a2
         if(payload != NULL) {
             debug = 648;
-            // TODO: controllare memorizzazione del payload
             *payload = messageExtracted->m_payload;
         }
         debug = 649;
@@ -237,7 +234,7 @@ void passUpOrDie(int indexValue) {
 msg_PTR createMessage(pcb_PTR sender, unsigned int payload) {
     msg_PTR newMsg = allocMsg();
     if (newMsg == NULL) {
-      // TODO: non ci sono più messaggi disponibili, che si fa?
+      // TODO: non ci sono più messaggi disponibili, che si fa? mettere MSGNOGOOD
     } else {
         newMsg->m_sender = sender;
         newMsg->m_payload = payload;
