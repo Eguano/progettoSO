@@ -165,7 +165,7 @@ pcb_t *create_process(state_t *s)
         .arg = &ssi_create_process,
     };
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&payload, 0);
-    klog_print("ASBREGAFIOI\n");
+    // klog_print("ASBREGAFIOI\n");
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&p), 0);
     return p;
 }

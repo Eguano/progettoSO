@@ -1,14 +1,11 @@
 #include "init.h"
 
-extern void initPcbs();
-extern void mkEmptyProcQ(struct list_head *head);
-extern pcb_t *allocPcb();
-extern void insertProcQ(struct list_head *head, pcb_t *p);
-extern void initMsgs();
+#include "../phase1/headers/pcb.h"
+#include "../phase1/headers/msg.h"
+
 extern void uTLB_RefillHandler();
 extern void exceptionHandler();
 extern void schedule();
-
 extern void SSIHandler();
 extern void test();
 
@@ -85,5 +82,6 @@ static void initialize() {
     mkEmptyProcQ(&terminal_blocked_list[1][i]);
   }
   mkEmptyProcQ(&pseudoclock_blocked_list);
+  currentState = (state_t *)BIOSDATAPAGE;
   debug = 206;
 }

@@ -7,11 +7,11 @@ extern state_t *currentState;
 extern struct list_head ready_queue;
 extern pcb_PTR current_process;
 extern struct list_head pseudoclock_blocked_list;
-extern int debug;
 
 extern void schedule();
 extern void terminateProcess(pcb_t *proc);
 
+extern int debug;
 extern void klog_print(char *str);
 
 void syscallHandler() {
@@ -159,7 +159,6 @@ void sendMessage() {
     currentState->pc_epc += WORDLEN;
 }
 
-
 /*
     Estrae un messaggio dalla inbox o, se questa è vuota, attende un messaggio
 */
@@ -178,9 +177,15 @@ void receiveMessage() {
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
         debug = 645;
-        // TODO: usare STST? da libumps.h
-        current_process->p_s = *currentState;
-	    current_process->p_time += (TIMESLICE - getTIMER());
+        // TODO: verificare se funziona davvero
+        STST(&current_process->p_s);
+        current_process->p_s.pc_epc = currentState->pc_epc;
+        current_process->p_s.reg_a0 = RECEIVEMESSAGE;
+        current_process->p_s.reg_a1 = (unsigned int) sender;
+        current_process->p_s.reg_a2 = (unsigned int) payload;
+        // TODO: il timer in teoria va in discesa, controllare incremento del p_time
+        current_process->p_time += getTIMER();
+        // TODO: current_process = NULL; ??? serve forse
         schedule();
         debug = 646;
     } 
@@ -199,7 +204,6 @@ void receiveMessage() {
         currentState->reg_v0 = (memaddr) messageExtracted->m_sender;
 
         debug = 650;
-        // TODO: freeMsg provoca un errore sembra
         freeMsg(messageExtracted);
         // Incremento il PC per evitare loop infinito
         currentState->pc_epc += WORDLEN;    
@@ -232,7 +236,7 @@ void passUpOrDie(int indexValue) {
     debug = 656;
 }
 
-static msg_PTR createMessage(pcb_PTR sender, unsigned int payload) {
+msg_PTR createMessage(pcb_PTR sender, unsigned int payload) {
     msg_PTR newMsg = allocMsg();
     if (newMsg == NULL) {
       // TODO: non ci sono più messaggi disponibili, che si fa?

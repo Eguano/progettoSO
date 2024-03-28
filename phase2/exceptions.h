@@ -13,6 +13,4 @@ void uTLB_RefillHandler();
 void exceptionHandler();
 void memcpy(memaddr *, memaddr *, unsigned int);
 
-state_t *currentState;
-
 #endif
