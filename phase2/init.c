@@ -2,16 +2,16 @@
 
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/msg.h"
+#include "scheduler.h"
 
 extern void uTLB_RefillHandler();
 extern void exceptionHandler();
-extern void schedule();
 extern void SSIHandler();
 extern void test();
 
 /**
  * Entry point del sistema operativo.
- * <p>Inizializza il nucleo, istanzia il processo SSI e test
+ * <p>Inizializza il nucleo, istanzia i processi SSI e test
  * e carica l'Interval Timer
  */
 void main() {
@@ -35,7 +35,6 @@ void main() {
   // istantiate a second process
   p2test_pcb = allocPcb();
   p2test_pcb->p_s.status |= IEPON | IMON | TEBITON;
-  // TODO: possibile errore nel settaggio di RAMTOP
   RAMTOP(p2test_pcb->p_s.reg_sp);
   p2test_pcb->p_s.reg_sp -= (2 * PAGESIZE);
   p2test_pcb->p_s.pc_epc = p2test_pcb->p_s.reg_t9 = (memaddr) test;

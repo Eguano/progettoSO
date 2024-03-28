@@ -10,12 +10,13 @@
 
 // number of started processes not yet terminated
 int process_count;
-// number of waiting processes (soft-blocked)
+// number of soft-blocked processes (waiting for DOIO or PseudoClock)
 int waiting_count;
 // running process
 pcb_PTR current_process;
 // queue of PCBs in ready state
 struct list_head ready_queue;
+// TODO: sostituire le liste dei device con semplici puntatori (non fondamentale)
 // a list of blocked PCBs for every external device
 struct list_head external_blocked_list[4][MAXDEV];
 // list of blocked PCBs for the pseudo-clock

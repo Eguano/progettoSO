@@ -3,10 +3,7 @@
 #include "syscall.h"
 
 extern state_t *currentState;
-
-extern void passUpOrDie(int);
 extern void interruptHandler();
-extern void syscallHandler();
 
 extern int debug;
 
@@ -20,7 +17,6 @@ void uTLB_RefillHandler() {
     setENTRYLO(0x00000000);
     TLBWR();
     LDST((state_t*) 0x0FFFF000);
-    debug = 101;
 }
 
 /**
@@ -60,6 +56,7 @@ void exceptionHandler() {
 
 /*
     Funzione per copiare strutture
+    TODO: togliere quando non servirà più negli interrupt
 */
 void memcpy(memaddr *src, memaddr *dest, unsigned int bytes) {
     debug = 104;

@@ -2,18 +2,22 @@
 
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/msg.h"
+#include "scheduler.h"
 
-extern state_t *currentState;
-extern struct list_head ready_queue;
 extern pcb_PTR current_process;
+extern struct list_head ready_queue;
 extern struct list_head pseudoclock_blocked_list;
-
-extern void schedule();
+extern state_t *currentState;
 extern void terminateProcess(pcb_t *proc);
+void copyRegisters(state_t *dest, state_t *src);
 
 extern int debug;
 extern void klog_print(char *str);
 
+/**
+ * 
+ * 
+ */
 void syscallHandler() {
     debug = 600;
 
@@ -177,9 +181,7 @@ void receiveMessage() {
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
         debug = 645;
-        // TODO: sostituire con copia manuale dei registri
-        current_process->p_s = *currentState;
-        current_process->p_s.reg_a0 = RECEIVEMESSAGE;
+        copyRegisters(&current_process->p_s, currentState);
         // TODO: il timer in teoria va in discesa, controllare incremento del p_time
         current_process->p_time += getTIMER();
         current_process = NULL;

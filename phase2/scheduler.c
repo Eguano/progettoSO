@@ -11,8 +11,7 @@ extern int debug;
 
 /**
  * Carica un processo per essere mandato in run, altrimenti blocca l'esecuzione.
- * <p>Salvare lo stato, rimuovere il processo che ha terminato ecc
- * viene svolto dall'interrupt handler
+ * <p>Salvare lo stato, rimuovere il processo che ha terminato ecc viene svolto dal chiamante
  */
 void schedule() {
   debug = 400;
@@ -32,8 +31,8 @@ void schedule() {
       // deadlock
       PANIC();
     }
-    debug = 405;
   }
+  debug = 405;
   /* nuovo processo dopo i controlli in modo che in caso di WAIT
   nel momento in cui si riparte si possa caricare il processo */
   // dispatch the next process

@@ -16,5 +16,6 @@ static void terminateProgeny(pcb_t *p);
 static void destroyProcess(pcb_t *p);
 static int findDevice(memaddr *commandAddr);
 static int findInstance(memaddr distFromBase);
+void copyRegisters(state_t *dest, state_t *src);
 
 #endif
