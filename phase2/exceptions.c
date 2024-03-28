@@ -2,13 +2,13 @@
 
 #include "syscall.h"
 
+extern state_t *currentState;
+
 extern void passUpOrDie(int);
 extern void interruptHandler();
 extern void syscallHandler();
-extern int debug;
 
-// TODO: questo deve essere aggiornato ogni volta che c'è un'eccezione?
-state_t *currentState = (state_t *)BIOSDATAPAGE; 
+extern int debug;
 
 /**
  * Gestisce il caso in cui si prova accedere ad un indirizzo 

@@ -1,13 +1,13 @@
 #include "scheduler.h"
 
+#include "../phase1/headers/pcb.h"
+
 extern int process_count;
 extern int waiting_count;
 extern pcb_PTR current_process;
 extern struct list_head ready_queue;
-extern int debug;
 
-extern int emptyProcQ(struct list_head *head);
-extern pcb_t *removeProcQ(struct list_head *head);
+extern int debug;
 
 /**
  * Carica un processo per essere mandato in run, altrimenti blocca l'esecuzione.

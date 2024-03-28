@@ -10,8 +10,8 @@ extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
-extern int debug;
 
+extern int debug;
 extern void klog_print(char *str);
 
 /**
