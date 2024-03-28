@@ -198,9 +198,13 @@
 /* Inizio indirizzo di device registers */
 #define START_DEVREG		0x10000054
 
-// Max number of device's instances - definita da IVAN
+// DEFINITE DA IVAN
+// Max number of device's instances
 #define MAXDEV 8
 // service ssi to unblock process waiting for IO
 #define ENDIO 8
+// valori booleani per comodità
+#define TRUE 1
+#define FALSE 0
 
 #endif

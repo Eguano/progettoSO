@@ -9,69 +9,49 @@ extern struct list_head ready_queue;
 extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
-extern pcb_PTR ssi_pcb;
-extern int debug;
 
-/**
- * Invia una richiesta all'SSI
- * 
- * @param sender area dove salvare la risposta
- * @param service codice per il servizio richiesto
- * @param arg parametro per il servizio (se necessario)
- */
-void SSIRequest(pcb_t* sender, int service, void* arg) {
-  debug = 500;
-  ssi_payload_t payload = {service, arg};
-  int reply = SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
-  debug = 501;
-  // se non è OK il processo ssi non esiste -> emergency shutdown
-  if (reply == DEST_NOT_EXIST) PANIC();
-  debug = 502;
-  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) sender, 0);
-  debug = 503;
-}
+extern int debug;
+extern void klog_print(char *str);
 
 /**
  * Gestisce una richiesta ricevuta da un processo
  */
 void SSIHandler() {
-  debug = 504;
   while (TRUE) {
     debug = 505;
-    ssi_payload_t payload;
-    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &payload, 0);
+    ssi_payload_PTR p_payload;
+    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
     debug = 506;
     // risposta da inviare al sender
-    unsigned int response = (unsigned int) NULL;
+    unsigned int response = 0;
 
     // esecuzione del servizio richiesto
-    switch (payload.service_code) {
+    switch (p_payload->service_code) {
       case CREATEPROCESS:
-        debug = 507;
         // creare un nuovo processo
-        // TODO: gestire il return NULL (se non alloca il processo) -> bisogna rispondere NOPROC
-        response = (unsigned int) createProcess((ssi_create_process_PTR) payload.arg, sender);
-        process_count++;
+        debug = 507;
+        response = createProcess((ssi_create_process_PTR) p_payload->arg, sender);
+        klog_print("Processo creato.");
         debug = 508;
         break;
       case TERMPROCESS:
-        debug = 509;
         // eliminare un processo esistente
-        if (payload.arg == NULL) {
+        debug = 509;
+        if (p_payload->arg == NULL) {
           debug = 510;
           terminateProcess(sender);
         } else {
           debug = 511;
-          terminateProcess(payload.arg);
+          terminateProcess((pcb_PTR) p_payload->arg);
         }
         debug = 512;
         break;
       case DOIO:
-        debug = 513;
         // eseguire un input o output
-        int dev = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) / 10;
+        debug = 513;
+        int dev = findDevice(((ssi_do_io_PTR) p_payload->arg)->commandAddr) / 10;
         debug = 514;
-        int devInstance = findDevice(((ssi_do_io_PTR) payload.arg)->commandAddr) % 10;
+        int devInstance = findDevice(((ssi_do_io_PTR) p_payload->arg)->commandAddr) % 10;
         debug = 515;
         if (dev == 4) {
           debug = 516;
@@ -88,33 +68,33 @@ void SSIHandler() {
         }
         waiting_count++;
         debug = 519;
-        *((ssi_do_io_PTR) payload.arg)->commandAddr = ((ssi_do_io_PTR) payload.arg)->commandValue;
+        *((ssi_do_io_PTR) p_payload->arg)->commandAddr = ((ssi_do_io_PTR) p_payload->arg)->commandValue;
         debug = 520;
         // TODO: interruptHandler deve mandare un messaggio con il risultato dell'operazione
         break;
       case GETTIME:
-        debug = 521;
         // restituire accumulated processor time
-        response = (unsigned int) sender->p_time + (TIMESLICE - getTIMER());
+        debug = 521;
+        response = ((unsigned int) sender->p_time) + (TIMESLICE - getTIMER());
         debug = 522;
         break;
       case CLOCKWAIT:
-        debug = 523;
         // bloccare il processo per lo pseudoclock
+        debug = 523;
         insertProcQ(&pseudoclock_blocked_list, sender);
         waiting_count++;
         debug = 524;
         break;
       case GETSUPPORTPTR:
-        debug = 525;
         // restituire la struttura di supporto
+        debug = 525;
         response = (unsigned int) sender->p_supportStruct;
         debug = 526;
         break;
       case GETPROCESSID:
-        debug = 527;
         // restituire il pid del sender o del suo genitore
-        if (payload.arg == 0) {
+        debug = 527;
+        if (((unsigned int) p_payload->arg) == 0) {
           debug = 528;
           response = sender->p_pid;
         } else {
@@ -130,21 +110,20 @@ void SSIHandler() {
         debug = 532;
         break;
       case ENDIO:
-        debug = 533;
         // terminazione operazione IO
-        sender = ((ssi_end_io_PTR) payload.arg)->toUnblock;
-        response = ((ssi_end_io_PTR) payload.arg)->status;
+        debug = 533;
+        sender = ((ssi_end_io_PTR) p_payload->arg)->toUnblock;
+        response = ((ssi_end_io_PTR) p_payload->arg)->status;
         debug = 534;
         break;
       default:
-        debug = 535;
         // codice non esiste, terminare processo richiedente e tutta la sua progenie
+        debug = 535;
         terminateProcess(sender);
         debug = 536;
         break;
     }
     debug = 537;
-
     SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
     debug = 538;
   }
@@ -153,20 +132,22 @@ void SSIHandler() {
 /**
  * Crea un processo come figlio del richiedente e lo posiziona in readyQueue
  * 
- * @param arg struttura contenente state e support (eventuale)
+ * @param arg struttura contenente state e (eventuale) support
  * @param sender processo richiedente
- * @return puntatore al processo creato, NULL altrimenti
+ * @return puntatore al processo creato, NOPROC altrimenti
  */
-static pcb_PTR createProcess(ssi_create_process_t *arg, pcb_t *sender) {
+static unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
   pcb_PTR p = allocPcb();
-  if (p != NULL) {
-    p->p_s = *arg->state;
-    p->p_supportStruct = arg->support;
+  if (p == NULL) {
+    return (unsigned int) NOPROC;
+  } else {
+    copyRegisters(&p->p_s, arg->state);
+    if (arg->support != NULL) p->p_supportStruct = arg->support;
+    insertChild(sender, p);
     insertProcQ(&ready_queue, p);
     process_count++;
-    insertChild(sender, p);
+    return (unsigned int) p;
   }
-  return p;
 }
 
 /**
@@ -174,7 +155,7 @@ static pcb_PTR createProcess(ssi_create_process_t *arg, pcb_t *sender) {
  * 
  * @param proc processo da eliminare
  */
-static void terminateProcess(pcb_t *proc) {
+void terminateProcess(pcb_t *proc) {
   outChild(proc);
   if (!emptyChild(proc)) terminateProgeny(proc);
   destroyProcess(proc);
@@ -203,26 +184,34 @@ static void destroyProcess(pcb_t *p) {
     // lo cerco nella ready queue
     if (outProcQ(&ready_queue, p) == NULL) {
       // se non è nella ready lo cerco tra i bloccati per lo pseudoclock
+      int found = FALSE;
       if (outProcQ(&pseudoclock_blocked_list, p) == NULL) {
-        // se non è per lo pseudoclock, è bloccato per un altro interrupt
-        int found = 0;
-        for (int i = 0; i < MAXDEV && found == 0; i++) {
-          if (outProcQ(&external_blocked_list[0][i], p) != NULL) found = 1;
-          if (outProcQ(&external_blocked_list[1][i], p) != NULL) found = 1;
-          if (outProcQ(&external_blocked_list[2][i], p) != NULL) found = 1;
-          if (outProcQ(&external_blocked_list[3][i], p) != NULL) found = 1;
-          if (outProcQ(&terminal_blocked_list[0][i], p) != NULL) found = 1;
-          if (outProcQ(&terminal_blocked_list[1][i], p) != NULL) found = 1;
+        // se non è per lo pseudoclock, magari è bloccato per un altro interrupt
+        for (int i = 0; i < MAXDEV && found == FALSE; i++) {
+          if (outProcQ(&external_blocked_list[0][i], p) != NULL) found = TRUE;
+          if (outProcQ(&external_blocked_list[1][i], p) != NULL) found = TRUE;
+          if (outProcQ(&external_blocked_list[2][i], p) != NULL) found = TRUE;
+          if (outProcQ(&external_blocked_list[3][i], p) != NULL) found = TRUE;
+          if (outProcQ(&terminal_blocked_list[0][i], p) != NULL) found = TRUE;
+          if (outProcQ(&terminal_blocked_list[1][i], p) != NULL) found = TRUE;
         }
+      } else {
+        found = TRUE;
       }
-      // TODO: se viene terminato un processo in attesa per una receive ma non per un dispositivo, waiting_count non va decrementato: gestire in caso di problemi nel test
-      waiting_count--;
+      // contatore diminuito solo se era bloccato per DOIO o PseudoClock
+      if (found) waiting_count--;
     }
     freePcb(p);
     process_count--;
   }
 }
 
+/**
+ * Trova il device per cui ha fatto richiesta il processo
+ * 
+ * @param commandAddr puntatore al registro del device
+ * @return device richiesto come device*10 + istanza
+ */
 static int findDevice(memaddr *commandAddr) {
   memaddr devRegAddr = *commandAddr - 0x4;
   switch (devRegAddr) {
@@ -251,6 +240,58 @@ static int findDevice(memaddr *commandAddr) {
   }
 }
 
+/**
+ * Trova l'istanza del device richiesto
+ * 
+ * @param distFromBase distanza tra il registro command del device e l'indirizzo base del device
+ * @return istanza del device [0-7]
+ */
 static int findInstance(memaddr distFromBase) {
   return distFromBase / 0x00000010;
+}
+
+/**
+ * Copia tutti i registri dello state
+ * 
+ * @param dest stato in cui copiare i valori
+ * @param src stato da cui copiare i valori
+ */
+void copyRegisters(state_t *dest, state_t *src) {
+  dest->cause = src->cause;
+  dest->entry_hi = src->entry_hi;
+  dest->reg_at = src->reg_at;
+  dest->reg_v0 = src->reg_v0;
+  dest->reg_v1 = src->reg_v1;
+  dest->reg_a0 = src->reg_a0;
+  dest->reg_a1 = src->reg_a1;
+  dest->reg_a2 = src->reg_a2;
+  dest->reg_a3 = src->reg_a3;
+  dest->reg_t0 = src->reg_t0;
+  dest->reg_t1 = src->reg_t1;
+  dest->reg_t2 = src->reg_t2;
+  dest->reg_t3 = src->reg_t3;
+  dest->reg_t4 = src->reg_t4;
+  dest->reg_t5 = src->reg_t5;
+  dest->reg_t6 = src->reg_t6;
+  dest->reg_t7 = src->reg_t7;
+  dest->reg_s0 = src->reg_s0;
+  dest->reg_s1 = src->reg_s1;
+  dest->reg_s2 = src->reg_s2;
+  dest->reg_s3 = src->reg_s3;
+  dest->reg_s4 = src->reg_s4;
+  dest->reg_s5 = src->reg_s5;
+  dest->reg_s6 = src->reg_s6;
+  dest->reg_s7 = src->reg_s7;
+  dest->reg_t8 = src->reg_t8;
+  dest->reg_t9 = src->reg_t9;
+  dest->reg_gp = src->reg_gp;
+  dest->reg_sp = src->reg_sp;
+  dest->reg_fp = src->reg_fp;
+  dest->reg_ra = src->reg_ra;
+  dest->reg_HI = src->reg_HI;
+  dest->reg_LO = src->reg_LO;
+  dest->hi = src->hi;
+  dest->lo = src->lo;
+  dest->pc_epc = src->pc_epc;
+  dest->status = src->status;
 }

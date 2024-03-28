@@ -193,7 +193,6 @@ void test()
 
     // create print process
     print_pcb = create_process(&printstate);
-    klog_print("ASBREGAFIOI\n");
 
     if ((int)print_pcb == NOPROC)
         PANIC();

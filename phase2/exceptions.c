@@ -2,13 +2,10 @@
 
 #include "syscall.h"
 
-extern void passUpOrDie(int);
+extern state_t *currentState;
 extern void interruptHandler();
-extern void syscallHandler();
-extern int debug;
 
-// TODO: questo deve essere aggiornato ogni volta che c'è un'eccezione?
-state_t *currentState = (state_t *)BIOSDATAPAGE; 
+extern int debug;
 
 /**
  * Gestisce il caso in cui si prova accedere ad un indirizzo 
@@ -20,7 +17,6 @@ void uTLB_RefillHandler() {
     setENTRYLO(0x00000000);
     TLBWR();
     LDST((state_t*) 0x0FFFF000);
-    debug = 101;
 }
 
 /**
@@ -60,6 +56,7 @@ void exceptionHandler() {
 
 /*
     Funzione per copiare strutture
+    TODO: togliere quando non servirà più negli interrupt
 */
 void memcpy(memaddr *src, memaddr *dest, unsigned int bytes) {
     debug = 104;
