@@ -10,6 +10,7 @@ extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
+extern pcb_PTR p2test_pcb;
 
 extern int debug;
 extern void klog_print(char *str);
@@ -31,6 +32,7 @@ void SSIHandler() {
     switch (p_payload->service_code) {
       case CREATEPROCESS:
         // creare un nuovo processo
+        klog_print("VAMOOOSSS");
         debug = 507;
         response = createProcess((ssi_create_process_PTR) p_payload->arg, sender);
         debug = 508;
@@ -143,7 +145,7 @@ static unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
   if (p == NULL) {
     return (unsigned int) NOPROC;
   } else {
-    p->p_s = *(arg->state);
+    p->p_s = *arg->state;
     if (arg->support != NULL) p->p_supportStruct = arg->support;
     insertChild(sender, p);
     insertProcQ(&ready_queue, p);

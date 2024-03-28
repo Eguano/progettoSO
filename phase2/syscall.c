@@ -68,6 +68,7 @@ void syscallHandler() {
     Manda un messaggio ad uno specifico processo destinatario 
 */
 void sendMessage() {
+    // TODO: BUG-> non entra nei for-each per cercare il destinatario
     debug = 615;
     pcb_PTR receiver = (pcb_PTR)currentState->reg_a1;
     unsigned int payload = currentState->reg_a2;
@@ -87,7 +88,7 @@ void sendMessage() {
         debug = 618;
         found = TRUE;
         msg_PTR toPush = createMessage(current_process, payload);
-        pushMessage(&receiver->msg_inbox, toPush);
+        insertMessage(&receiver->msg_inbox, toPush);
         messagePushed = TRUE;
     }
 
@@ -101,7 +102,7 @@ void sendMessage() {
                 debug = 621;
                 found = TRUE;
                 msg_PTR toPush = createMessage(current_process, payload);
-                pushMessage(&receiver->msg_inbox, toPush);
+                insertMessage(&receiver->msg_inbox, toPush);
                 debug = 622;
                 messagePushed = TRUE;
             }
@@ -121,7 +122,7 @@ void sendMessage() {
                 debug = 628;
                 found = TRUE;
                 msg_PTR toPush = createMessage(current_process, payload);
-                pushMessage(&receiver->msg_inbox, toPush);
+                insertMessage(&receiver->msg_inbox, toPush);
                 messagePushed = TRUE;
                 debug = 629;
             }
@@ -137,7 +138,7 @@ void sendMessage() {
     if(!found) {
         debug = 633;
         msg_PTR toPush = createMessage(current_process, payload);
-        pushMessage(&receiver->msg_inbox, toPush);
+        insertMessage(&receiver->msg_inbox, toPush);
         messagePushed = TRUE;
         insertProcQ(&ready_queue, receiver);
         debug = 634;
@@ -178,11 +179,8 @@ void receiveMessage() {
     if(messageExtracted == NULL) {
         debug = 645;
         // TODO: verificare se funziona davvero
-        STST(&current_process->p_s);
-        current_process->p_s.pc_epc = currentState->pc_epc;
+        current_process->p_s = *currentState;
         current_process->p_s.reg_a0 = RECEIVEMESSAGE;
-        current_process->p_s.reg_a1 = (unsigned int) sender;
-        current_process->p_s.reg_a2 = (unsigned int) payload;
         // TODO: il timer in teoria va in discesa, controllare incremento del p_time
         current_process->p_time += getTIMER();
         // TODO: current_process = NULL; ??? serve forse
