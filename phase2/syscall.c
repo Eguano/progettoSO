@@ -92,8 +92,10 @@ void sendMessage() {
         debug = 618;
         found = TRUE;
         msg_PTR toPush = createMessage(current_process, payload);
-        insertMessage(&receiver->msg_inbox, toPush);
-        messagePushed = TRUE;
+        if (toPush != NULL) {
+            insertMessage(&receiver->msg_inbox, toPush);
+            messagePushed = TRUE;
+        }
     }
 
     // Controlla se il processo destinatario è nella readyQueue
@@ -106,9 +108,11 @@ void sendMessage() {
                 debug = 621;
                 found = TRUE;
                 msg_PTR toPush = createMessage(current_process, payload);
-                insertMessage(&receiver->msg_inbox, toPush);
-                debug = 622;
-                messagePushed = TRUE;
+                if (toPush != NULL) {
+                    insertMessage(&receiver->msg_inbox, toPush);
+                    messagePushed = TRUE;
+                    debug = 622;
+                }
             }
             debug = 623;
         }
@@ -126,9 +130,11 @@ void sendMessage() {
                 debug = 628;
                 found = TRUE;
                 msg_PTR toPush = createMessage(current_process, payload);
-                insertMessage(&receiver->msg_inbox, toPush);
-                messagePushed = TRUE;
-                debug = 629;
+                if (toPush != NULL) {
+                    insertMessage(&receiver->msg_inbox, toPush);
+                    messagePushed = TRUE;
+                    debug = 629;
+                }
             }
             debug = 630;
         }
@@ -142,8 +148,10 @@ void sendMessage() {
     if(!found) {
         debug = 633;
         msg_PTR toPush = createMessage(current_process, payload);
-        insertMessage(&receiver->msg_inbox, toPush);
-        messagePushed = TRUE;
+        if (toPush != NULL) {
+            insertMessage(&receiver->msg_inbox, toPush);
+            messagePushed = TRUE;
+        }
         insertProcQ(&ready_queue, receiver);
         debug = 634;
     }
@@ -233,11 +241,16 @@ void passUpOrDie(int indexValue) {
     debug = 656;
 }
 
+/**
+ * Alloca un nuovo messaggio
+ * 
+ * @param sender mittente del messaggio
+ * @param payload puntatore al payload del messaggio
+ * @return puntatore al messaggio se disponibile, NULL altrimenti
+ */
 msg_PTR createMessage(pcb_PTR sender, unsigned int payload) {
     msg_PTR newMsg = allocMsg();
-    if (newMsg == NULL) {
-      // TODO: non ci sono più messaggi disponibili, che si fa? mettere MSGNOGOOD
-    } else {
+    if (newMsg != NULL) {
         newMsg->m_sender = sender;
         newMsg->m_payload = payload;
     }
