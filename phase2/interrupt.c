@@ -1,6 +1,16 @@
 #include "interrupt.h"
 
 #include "../phase1/headers/pcb.h"
+#include "scheduler.h"
+
+extern int waiting_count;
+extern pcb_PTR current_process;
+extern struct list_head ready_queue;
+extern struct list_head external_blocked_list[4][MAXDEV];
+extern struct list_head pseudoclock_blocked_list;
+extern struct list_head terminal_blocked_list[2][MAXDEV];
+extern pcb_PTR ssi_pcb;
+extern state_t *currentState;
 
 extern int debug;
 
@@ -108,7 +118,7 @@ void interruptHandler() {
                                         };
                                         debug = 323;
 
-                                        // TODO: c'è un modo per mandare messaggi senza usare SYSCALL()?
+                                        // TODO: non usare le SYSCALL, usare sendMessage direttamente impostando i registri
                                         SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&payload, 0);
                                         debug = 324;
 

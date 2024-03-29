@@ -17,14 +17,13 @@ extern void klog_print(char *str);
  * Gestisce una richiesta ricevuta da un processo
  */
 void SSIHandler() {
-  debug = 504;
   while (TRUE) {
     debug = 505;
     ssi_payload_PTR p_payload;
     pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
     debug = 506;
     // risposta da inviare al sender
-    unsigned int response = (unsigned int) NULL;
+    unsigned int response = 0;
 
     // esecuzione del servizio richiesto
     switch (p_payload->service_code) {
@@ -32,6 +31,7 @@ void SSIHandler() {
         // creare un nuovo processo
         debug = 507;
         response = createProcess((ssi_create_process_PTR) p_payload->arg, sender);
+        klog_print("Processo creato.");
         debug = 508;
         break;
       case TERMPROCESS:
@@ -42,13 +42,12 @@ void SSIHandler() {
           terminateProcess(sender);
         } else {
           debug = 511;
-          terminateProcess(p_payload->arg);
+          terminateProcess((pcb_PTR) p_payload->arg);
         }
         debug = 512;
         break;
       case DOIO:
         // eseguire un input o output
-        // TODO: togliere processo che ha fatto richiesta dalla lista in cui si trova
         debug = 513;
         int dev = findDevice(((ssi_do_io_PTR) p_payload->arg)->commandAddr) / 10;
         debug = 514;
@@ -76,7 +75,7 @@ void SSIHandler() {
       case GETTIME:
         // restituire accumulated processor time
         debug = 521;
-        response = (unsigned int) sender->p_time + (TIMESLICE - getTIMER());
+        response = ((unsigned int) sender->p_time) + (TIMESLICE - getTIMER());
         debug = 522;
         break;
       case CLOCKWAIT:
@@ -95,7 +94,7 @@ void SSIHandler() {
       case GETPROCESSID:
         // restituire il pid del sender o del suo genitore
         debug = 527;
-        if (p_payload->arg == 0) {
+        if (((unsigned int) p_payload->arg) == 0) {
           debug = 528;
           response = sender->p_pid;
         } else {
@@ -133,7 +132,7 @@ void SSIHandler() {
 /**
  * Crea un processo come figlio del richiedente e lo posiziona in readyQueue
  * 
- * @param arg struttura contenente state e support (eventuale)
+ * @param arg struttura contenente state e (eventuale) support
  * @param sender processo richiedente
  * @return puntatore al processo creato, NOPROC altrimenti
  */
@@ -142,43 +141,7 @@ static unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
   if (p == NULL) {
     return (unsigned int) NOPROC;
   } else {
-    p->p_s.cause = arg->state->cause;
-    p->p_s.entry_hi = arg->state->entry_hi;
-    p->p_s.reg_at = arg->state->reg_at;
-    p->p_s.reg_v0 = arg->state->reg_v0;
-    p->p_s.reg_v1 = arg->state->reg_v1;
-    p->p_s.reg_a0 = arg->state->reg_a0;
-    p->p_s.reg_a1 = arg->state->reg_a1;
-    p->p_s.reg_a2 = arg->state->reg_a2;
-    p->p_s.reg_a3 = arg->state->reg_a3;
-    p->p_s.reg_t0 = arg->state->reg_t0;
-    p->p_s.reg_t1 = arg->state->reg_t1;
-    p->p_s.reg_t2 = arg->state->reg_t2;
-    p->p_s.reg_t3 = arg->state->reg_t3;
-    p->p_s.reg_t4 = arg->state->reg_t4;
-    p->p_s.reg_t5 = arg->state->reg_t5;
-    p->p_s.reg_t6 = arg->state->reg_t6;
-    p->p_s.reg_t7 = arg->state->reg_t7;
-    p->p_s.reg_s0 = arg->state->reg_s0;
-    p->p_s.reg_s1 = arg->state->reg_s1;
-    p->p_s.reg_s2 = arg->state->reg_s2;
-    p->p_s.reg_s3 = arg->state->reg_s3;
-    p->p_s.reg_s4 = arg->state->reg_s4;
-    p->p_s.reg_s5 = arg->state->reg_s5;
-    p->p_s.reg_s6 = arg->state->reg_s6;
-    p->p_s.reg_s7 = arg->state->reg_s7;
-    p->p_s.reg_t8 = arg->state->reg_t8;
-    p->p_s.reg_t9 = arg->state->reg_t9;
-    p->p_s.reg_gp = arg->state->reg_gp;
-    p->p_s.reg_sp = arg->state->reg_sp;
-    p->p_s.reg_fp = arg->state->reg_fp;
-    p->p_s.reg_ra = arg->state->reg_ra;
-    p->p_s.reg_HI = arg->state->reg_HI;
-    p->p_s.reg_LO = arg->state->reg_LO;
-    p->p_s.hi = arg->state->hi;
-    p->p_s.lo = arg->state->lo;
-    p->p_s.pc_epc = arg->state->pc_epc;
-    p->p_s.status = arg->state->status;
+    copyRegisters(&p->p_s, arg->state);
     if (arg->support != NULL) p->p_supportStruct = arg->support;
     insertChild(sender, p);
     insertProcQ(&ready_queue, p);
@@ -221,26 +184,34 @@ static void destroyProcess(pcb_t *p) {
     // lo cerco nella ready queue
     if (outProcQ(&ready_queue, p) == NULL) {
       // se non è nella ready lo cerco tra i bloccati per lo pseudoclock
+      int found = FALSE;
       if (outProcQ(&pseudoclock_blocked_list, p) == NULL) {
-        // se non è per lo pseudoclock, è bloccato per un altro interrupt
-        int found = 0;
-        for (int i = 0; i < MAXDEV && found == 0; i++) {
-          if (outProcQ(&external_blocked_list[0][i], p) != NULL) found = 1;
-          if (outProcQ(&external_blocked_list[1][i], p) != NULL) found = 1;
-          if (outProcQ(&external_blocked_list[2][i], p) != NULL) found = 1;
-          if (outProcQ(&external_blocked_list[3][i], p) != NULL) found = 1;
-          if (outProcQ(&terminal_blocked_list[0][i], p) != NULL) found = 1;
-          if (outProcQ(&terminal_blocked_list[1][i], p) != NULL) found = 1;
+        // se non è per lo pseudoclock, magari è bloccato per un altro interrupt
+        for (int i = 0; i < MAXDEV && found == FALSE; i++) {
+          if (outProcQ(&external_blocked_list[0][i], p) != NULL) found = TRUE;
+          if (outProcQ(&external_blocked_list[1][i], p) != NULL) found = TRUE;
+          if (outProcQ(&external_blocked_list[2][i], p) != NULL) found = TRUE;
+          if (outProcQ(&external_blocked_list[3][i], p) != NULL) found = TRUE;
+          if (outProcQ(&terminal_blocked_list[0][i], p) != NULL) found = TRUE;
+          if (outProcQ(&terminal_blocked_list[1][i], p) != NULL) found = TRUE;
         }
+      } else {
+        found = TRUE;
       }
-      // TODO: se viene terminato un processo in attesa per una receive ma non per un dispositivo, waiting_count non va decrementato: gestire in caso di problemi nel test
-      waiting_count--;
+      // contatore diminuito solo se era bloccato per DOIO o PseudoClock
+      if (found) waiting_count--;
     }
     freePcb(p);
     process_count--;
   }
 }
 
+/**
+ * Trova il device per cui ha fatto richiesta il processo
+ * 
+ * @param commandAddr puntatore al registro del device
+ * @return device richiesto come device*10 + istanza
+ */
 static int findDevice(memaddr *commandAddr) {
   memaddr devRegAddr = *commandAddr - 0x4;
   switch (devRegAddr) {
@@ -269,6 +240,58 @@ static int findDevice(memaddr *commandAddr) {
   }
 }
 
+/**
+ * Trova l'istanza del device richiesto
+ * 
+ * @param distFromBase distanza tra il registro command del device e l'indirizzo base del device
+ * @return istanza del device [0-7]
+ */
 static int findInstance(memaddr distFromBase) {
   return distFromBase / 0x00000010;
+}
+
+/**
+ * Copia tutti i registri dello state
+ * 
+ * @param dest stato in cui copiare i valori
+ * @param src stato da cui copiare i valori
+ */
+void copyRegisters(state_t *dest, state_t *src) {
+  dest->cause = src->cause;
+  dest->entry_hi = src->entry_hi;
+  dest->reg_at = src->reg_at;
+  dest->reg_v0 = src->reg_v0;
+  dest->reg_v1 = src->reg_v1;
+  dest->reg_a0 = src->reg_a0;
+  dest->reg_a1 = src->reg_a1;
+  dest->reg_a2 = src->reg_a2;
+  dest->reg_a3 = src->reg_a3;
+  dest->reg_t0 = src->reg_t0;
+  dest->reg_t1 = src->reg_t1;
+  dest->reg_t2 = src->reg_t2;
+  dest->reg_t3 = src->reg_t3;
+  dest->reg_t4 = src->reg_t4;
+  dest->reg_t5 = src->reg_t5;
+  dest->reg_t6 = src->reg_t6;
+  dest->reg_t7 = src->reg_t7;
+  dest->reg_s0 = src->reg_s0;
+  dest->reg_s1 = src->reg_s1;
+  dest->reg_s2 = src->reg_s2;
+  dest->reg_s3 = src->reg_s3;
+  dest->reg_s4 = src->reg_s4;
+  dest->reg_s5 = src->reg_s5;
+  dest->reg_s6 = src->reg_s6;
+  dest->reg_s7 = src->reg_s7;
+  dest->reg_t8 = src->reg_t8;
+  dest->reg_t9 = src->reg_t9;
+  dest->reg_gp = src->reg_gp;
+  dest->reg_sp = src->reg_sp;
+  dest->reg_fp = src->reg_fp;
+  dest->reg_ra = src->reg_ra;
+  dest->reg_HI = src->reg_HI;
+  dest->reg_LO = src->reg_LO;
+  dest->hi = src->hi;
+  dest->lo = src->lo;
+  dest->pc_epc = src->pc_epc;
+  dest->status = src->status;
 }

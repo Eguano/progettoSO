@@ -2,18 +2,22 @@
 
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/msg.h"
+#include "scheduler.h"
 
-extern state_t *currentState;
-extern struct list_head ready_queue;
 extern pcb_PTR current_process;
+extern struct list_head ready_queue;
 extern struct list_head pseudoclock_blocked_list;
-
-extern void schedule();
+extern state_t *currentState;
 extern void terminateProcess(pcb_t *proc);
+void copyRegisters(state_t *dest, state_t *src);
 
 extern int debug;
 extern void klog_print(char *str);
 
+/**
+ * 
+ * 
+ */
 void syscallHandler() {
     debug = 600;
 
@@ -88,8 +92,10 @@ void sendMessage() {
         debug = 618;
         found = TRUE;
         msg_PTR toPush = createMessage(current_process, payload);
-        insertMessage(&receiver->msg_inbox, toPush);
-        messagePushed = TRUE;
+        if (toPush != NULL) {
+            insertMessage(&receiver->msg_inbox, toPush);
+            messagePushed = TRUE;
+        }
     }
 
     // Controlla se il processo destinatario è nella readyQueue
@@ -102,9 +108,11 @@ void sendMessage() {
                 debug = 621;
                 found = TRUE;
                 msg_PTR toPush = createMessage(current_process, payload);
-                insertMessage(&receiver->msg_inbox, toPush);
-                debug = 622;
-                messagePushed = TRUE;
+                if (toPush != NULL) {
+                    insertMessage(&receiver->msg_inbox, toPush);
+                    messagePushed = TRUE;
+                    debug = 622;
+                }
             }
             debug = 623;
         }
@@ -122,9 +130,11 @@ void sendMessage() {
                 debug = 628;
                 found = TRUE;
                 msg_PTR toPush = createMessage(current_process, payload);
-                insertMessage(&receiver->msg_inbox, toPush);
-                messagePushed = TRUE;
-                debug = 629;
+                if (toPush != NULL) {
+                    insertMessage(&receiver->msg_inbox, toPush);
+                    messagePushed = TRUE;
+                    debug = 629;
+                }
             }
             debug = 630;
         }
@@ -138,8 +148,10 @@ void sendMessage() {
     if(!found) {
         debug = 633;
         msg_PTR toPush = createMessage(current_process, payload);
-        insertMessage(&receiver->msg_inbox, toPush);
-        messagePushed = TRUE;
+        if (toPush != NULL) {
+            insertMessage(&receiver->msg_inbox, toPush);
+            messagePushed = TRUE;
+        }
         insertProcQ(&ready_queue, receiver);
         debug = 634;
     }
@@ -177,9 +189,7 @@ void receiveMessage() {
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
         debug = 645;
-        // TODO: sostituire con copia manuale dei registri
-        current_process->p_s = *currentState;
-        current_process->p_s.reg_a0 = RECEIVEMESSAGE;
+        copyRegisters(&current_process->p_s, currentState);
         // TODO: il timer in teoria va in discesa, controllare incremento del p_time
         current_process->p_time += getTIMER();
         current_process = NULL;
@@ -231,11 +241,16 @@ void passUpOrDie(int indexValue) {
     debug = 656;
 }
 
+/**
+ * Alloca un nuovo messaggio
+ * 
+ * @param sender mittente del messaggio
+ * @param payload puntatore al payload del messaggio
+ * @return puntatore al messaggio se disponibile, NULL altrimenti
+ */
 msg_PTR createMessage(pcb_PTR sender, unsigned int payload) {
     msg_PTR newMsg = allocMsg();
-    if (newMsg == NULL) {
-      // TODO: non ci sono più messaggi disponibili, che si fa? mettere MSGNOGOOD
-    } else {
+    if (newMsg != NULL) {
         newMsg->m_sender = sender;
         newMsg->m_payload = payload;
     }
