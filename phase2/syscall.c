@@ -7,9 +7,11 @@
 extern pcb_PTR current_process;
 extern struct list_head ready_queue;
 extern struct list_head pseudoclock_blocked_list;
+extern pcb_PTR ssi_pcb;
 extern state_t *currentState;
 extern void terminateProcess(pcb_t *proc);
-void copyRegisters(state_t *dest, state_t *src);
+extern void copyRegisters(state_t *dest, state_t *src);
+extern int isInDevicesLists(pcb_t *p);
 
 extern int debug;
 extern void klog_print(char *str);
@@ -72,11 +74,9 @@ void syscallHandler() {
     Manda un messaggio ad uno specifico processo destinatario 
 */
 void sendMessage() {
-    // TODO: BUG-> non entra nei for-each per cercare il destinatario
     debug = 615;
     pcb_PTR receiver = (pcb_PTR)currentState->reg_a1;
     unsigned int payload = currentState->reg_a2;
-    pcb_PTR iter;
     int messagePushed = FALSE, found = FALSE;
 
     // Controlla se il processo destinatario è nella pcbFree_h list
@@ -87,62 +87,18 @@ void sendMessage() {
         currentState->reg_v0 = DEST_NOT_EXIST;
     }
 
-    // controlla se il processo destinatario è quello in esecuzione (auto-messaggio)
-    if (!found && receiver == current_process) {
+    // Controlla se il processo destinatario è in esecuzione (auto-messaggio), nella readyQueue oppure nelle liste di attesa (PseudoClock o device)
+    if (!found && (receiver == current_process || isInList(&ready_queue, receiver) || isInList(&pseudoclock_blocked_list, receiver) || isInDevicesLists(receiver))) {
         debug = 618;
         found = TRUE;
         msg_PTR toPush = createMessage(current_process, payload);
         if (toPush != NULL) {
+            debug = 619;
             insertMessage(&receiver->msg_inbox, toPush);
             messagePushed = TRUE;
         }
+        debug = 620;
     }
-
-    // Controlla se il processo destinatario è nella readyQueue
-    if(!found) {
-        debug = 619;
-        list_for_each_entry(iter, &ready_queue, p_list) {
-            debug = 620;
-            // Se il processo è nella readyQueue allora viene pushato il messaggio nella inbox
-            if(iter == receiver) {
-                debug = 621;
-                found = TRUE;
-                msg_PTR toPush = createMessage(current_process, payload);
-                if (toPush != NULL) {
-                    insertMessage(&receiver->msg_inbox, toPush);
-                    messagePushed = TRUE;
-                    debug = 622;
-                }
-            }
-            debug = 623;
-        }
-        debug = 624;
-    }
-    debug = 625;
-
-    // Controlla se il processo destinatario è nella pseudoclockBlocked
-    if(!found) {
-        debug = 626;
-        list_for_each_entry(iter, &pseudoclock_blocked_list, p_list) {
-            debug = 627;
-            // Se il processo è nella pseudoclockBlocked allora viene pushato il messaggio nella inbox senza metterlo in readyQueue
-            if(iter == receiver) {
-                debug = 628;
-                found = TRUE;
-                msg_PTR toPush = createMessage(current_process, payload);
-                if (toPush != NULL) {
-                    insertMessage(&receiver->msg_inbox, toPush);
-                    messagePushed = TRUE;
-                    debug = 629;
-                }
-            }
-            debug = 630;
-        }
-        debug = 631;
-    }
-    debug = 632;
-
-    // TODO: perchè non controlla le liste dei device terminali ed esterni?
 
     // Il processo destinatario non è in nessuna delle precedenti liste, quindi era bloccato per la receive: viene pushato il messaggio nella inbox e poi messo in readyQueue
     if(!found) {
@@ -151,8 +107,8 @@ void sendMessage() {
         if (toPush != NULL) {
             insertMessage(&receiver->msg_inbox, toPush);
             messagePushed = TRUE;
+            insertProcQ(&ready_queue, receiver);
         }
-        insertProcQ(&ready_queue, receiver);
         debug = 634;
     }
     debug = 635;
@@ -217,14 +173,18 @@ void receiveMessage() {
     debug = 652;
 }
 
-
+/**
+ * 
+ * 
+ * @param indexValue 
+ */
 void passUpOrDie(int indexValue) {
     debug = 653;
     
     // Pass up
     if(current_process->p_supportStruct != NULL) {
         debug = 654;
-        current_process->p_supportStruct->sup_exceptState[indexValue] = *currentState;
+        copyRegisters(&current_process->p_supportStruct->sup_exceptState[indexValue], currentState);
 
         unsigned int stackPtr, status, progCounter;
         stackPtr = current_process->p_supportStruct->sup_exceptContext[indexValue].stackPtr;
@@ -236,6 +196,7 @@ void passUpOrDie(int indexValue) {
     // Or die
     else {
         terminateProcess(current_process);
+        current_process = NULL;
         schedule();
     }
     debug = 656;
@@ -249,10 +210,80 @@ void passUpOrDie(int indexValue) {
  * @return puntatore al messaggio se disponibile, NULL altrimenti
  */
 msg_PTR createMessage(pcb_PTR sender, unsigned int payload) {
+    debug = 660;
     msg_PTR newMsg = allocMsg();
     if (newMsg != NULL) {
+        debug = 661;
         newMsg->m_sender = sender;
         newMsg->m_payload = payload;
     }
+    debug = 662;
     return newMsg;
+}
+
+/**
+ * Manda un messaggio diretto all'SSI senza usare le SYSCALL.
+ * Usato dall'interrupt handler per segnalare la fine di una DOIO
+ * 
+ * @param devStatusReg status del registro del device
+ * @param toUnblock processo a cui mandare la response
+ * @return stato dell'invio del messaggio
+ */
+int ssiDM(unsigned int devStatusReg, pcb_PTR toUnblock) {
+    debug = 670;
+    ssi_end_io_t endio = {
+        .status = devStatusReg,
+        .toUnblock = toUnblock,
+    };
+    ssi_payload_t payload = {
+        .service_code = ENDIO,
+        .arg = &endio,
+    };
+    
+    int messagePushed = FALSE, found = FALSE, toReturn;
+
+    // Controlla se l'ssi è nella pcbFree_h list
+    if(isInPCBFree_h(ssi_pcb)) {
+        debug = 671;
+        found = TRUE;
+        toReturn = DEST_NOT_EXIST;
+    }
+    debug = 672;
+
+    // controlla se l'ssi è in esecuzione o in readyQueue
+    if (!found && (ssi_pcb == current_process || isInList(&ready_queue, ssi_pcb))) {
+        debug = 673;
+        found = TRUE;
+        msg_PTR toPush = createMessage(NULL, (unsigned int) &payload);
+        if (toPush != NULL) {
+            insertMessage(&ssi_pcb->msg_inbox, toPush);
+            messagePushed = TRUE;
+        }
+    }
+    debug = 674;
+
+    // L'ssi non è in nessuna delle precedenti liste, quindi era bloccato per la receive
+    if(!found) {
+        debug = 677;
+        msg_PTR toPush = createMessage(NULL, (unsigned int) &payload);
+        if (toPush != NULL) {
+            insertMessage(&ssi_pcb->msg_inbox, toPush);
+            messagePushed = TRUE;
+            insertProcQ(&ready_queue, ssi_pcb);
+        }
+    }
+    debug = 678;
+
+    // Se il messaggio è stato pushato correttamente nella inbox allora mettiamo in reg_v0 OK
+    if(messagePushed) {
+        debug = 679;
+        toReturn = OK;
+    } else if(!isInPCBFree_h(ssi_pcb)) {
+        // Altrimenti mettiamo in reg_v0 MSGNOGOOD
+        debug = 680;
+        toReturn = MSGNOGOOD;
+    }
+    debug = 681;
+
+    return toReturn;
 }

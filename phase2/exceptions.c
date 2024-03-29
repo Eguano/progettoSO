@@ -55,20 +55,6 @@ void exceptionHandler() {
 }
 
 /*
-    Funzione per copiare strutture
-    TODO: togliere quando non servirà più negli interrupt
-*/
-void memcpy(memaddr *src, memaddr *dest, unsigned int bytes) {
-    debug = 104;
-    for(int i = 0; i < (bytes/4); i++){
-        *dest = *src;
-        dest++;
-        src++;
-    }
-    debug = 105;
-}
-
-/*
     Number - Code - Description
     0 - Int - External Device Interrupt
     1 - Mod - TLB-Modification Exception

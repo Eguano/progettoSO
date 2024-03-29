@@ -124,9 +124,32 @@ pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
     return NULL;
 }
 
+/**
+ * Controlla se il pcb è nella lista degli inutilizzati
+ * 
+ * @param p puntatore al pcb da cercare
+ * @return 1 se è nella lista free, 0 altrimenti
+ */
 int isInPCBFree_h(pcb_t *p) {
     pcb_PTR iter;
     list_for_each_entry(iter, &pcbFree_h, p_list) {
+        if(iter == p) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/**
+ * Controlla se un pcb fa parte di una lista
+ * 
+ * @param head sentinella della lista in cui controllare
+ * @param p puntatore al pcb da cercare
+ * @return 1 se è presente nella lista, 0 altrimenti
+ */
+int isInList(struct list_head *head, pcb_t *p) {
+    pcb_PTR iter;
+    list_for_each_entry(iter, head, p_list) {
         if(iter == p) {
             return 1;
         }
