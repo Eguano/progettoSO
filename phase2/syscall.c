@@ -8,6 +8,8 @@ extern pcb_PTR current_process;
 extern struct list_head ready_queue;
 extern struct list_head pseudoclock_blocked_list;
 extern pcb_PTR ssi_pcb;
+extern pcb_PTR test_pcb;
+extern pcb_PTR p2test_pcb;
 extern state_t *currentState;
 extern void terminateProcess(pcb_t *proc);
 extern void copyRegisters(state_t *dest, state_t *src);
@@ -136,10 +138,21 @@ void receiveMessage() {
     msg_PTR messageExtracted = NULL;
     // colui da cui voglio ricevere
     pcb_PTR sender = (pcb_PTR)currentState->reg_a1;
+    if(sender == p2test_pcb) {
+        klog_print("testpcb");
+    }
+    else {
+        klog_print("dionera");
+    }
     memaddr *payload = (memaddr*) currentState->reg_a2;
 
     debug = 643;
-    messageExtracted = popMessage(&current_process->msg_inbox, sender);
+    if(sender == ANYMESSAGE) {
+        messageExtracted = popMessage(&current_process->msg_inbox, NULL);
+    }
+    else {
+        messageExtracted = popMessage(&current_process->msg_inbox, sender);
+    }
     debug = 644;
 
     // Il messaggio non è stato trovato (va bloccato)
@@ -155,7 +168,7 @@ void receiveMessage() {
     else {
         debug = 647;
         // Viene memorizzato il payload del messaggio nella zona puntata da reg_a2
-        if(payload != NULL) {
+        if(payload != 0) {
             debug = 648;
             *payload = messageExtracted->m_payload;
         }

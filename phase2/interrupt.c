@@ -21,16 +21,17 @@ void interruptHandler() {
     
     // Estraggo il cause register
     unsigned int causeReg = currentState->cause;
+    debug = currentState->cause;
     debug = 301;
 
     // Gli interrupt sono abilitati a livello globale
-    if((currentState->status & IECON) == 1) {
+    if(((currentState->status & IEPON) >> 2) == 1) {
         debug = 302;
 
         for(int line = 0; line < 6; line++) {
             debug = 303;
             // Se la line e' attiva
-            if(intPendingInLine(causeReg, line)) {
+            if(intPendingInLine(causeReg, line + 2)) {
                 debug = 304;
                 switch(line) {
                     case 0:
@@ -127,7 +128,8 @@ unsigned short int intLineActive(unsigned short int line) {
 
 unsigned short int intPendingInLine(unsigned int causeReg, unsigned short int line) {
     debug = 337;
-    return (((causeReg & interruptConsts[line]) >> (8 + line)) & 0x1) == 1;
+    debug = (((causeReg & interruptConsts[line]) >> (8 + line)) & 0x1) == 1;
+    return debug;
 }
 
 unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev) {
