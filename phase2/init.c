@@ -84,3 +84,21 @@ static void initialize() {
   currentState = (state_t *)BIOSDATAPAGE;
   debug = 206;
 }
+
+/**
+ * Controlla se il processo è in attesa di un device
+ * 
+ * @param p puntatore al processo da cercare
+ * @return 1 se è in una lista di device, 0 altrimenti
+ */
+int isInDevicesLists(pcb_t *p) {
+  for (int i = 0; i < MAXDEV; i++) {
+    if (isInList(&external_blocked_list[0][i], p)) return TRUE;
+    if (isInList(&external_blocked_list[1][i], p)) return TRUE;
+    if (isInList(&external_blocked_list[2][i], p)) return TRUE;
+    if (isInList(&external_blocked_list[3][i], p)) return TRUE;
+    if (isInList(&terminal_blocked_list[0][i], p)) return TRUE;
+    if (isInList(&terminal_blocked_list[1][i], p)) return TRUE;
+  }
+  return FALSE;
+}

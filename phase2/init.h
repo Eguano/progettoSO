@@ -34,5 +34,6 @@ state_t *currentState;
 int debug;
 
 static void initialize();
+int isInDevicesLists(pcb_t *p);
 
 #endif

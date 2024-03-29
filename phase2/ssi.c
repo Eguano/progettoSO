@@ -112,6 +112,7 @@ void SSIHandler() {
       case ENDIO:
         // terminazione operazione IO
         debug = 533;
+        klog_print("COMOSEMOOO");
         sender = ((ssi_end_io_PTR) p_payload->arg)->toUnblock;
         response = ((ssi_end_io_PTR) p_payload->arg)->status;
         debug = 534;
@@ -124,7 +125,9 @@ void SSIHandler() {
         break;
     }
     debug = 537;
-    SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
+    if (p_payload->service_code != DOIO) {
+      SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
+    }
     debug = 538;
   }
 }

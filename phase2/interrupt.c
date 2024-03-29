@@ -11,6 +11,8 @@ extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
 extern state_t *currentState;
+extern void copyRegisters(state_t *dest, state_t *src);
+extern int ssiDM(unsigned int devStatusReg, pcb_PTR toUnblock);
 
 extern int debug;
 
@@ -69,7 +71,6 @@ void interruptHandler() {
                                         debug = 316;
                                         toUnblock = termDevInterruptHandler(&devStatusReg, line, dev);
                                     }
-
                                     // Sto trattando un external device interrupt
                                     else {
                                         debug = 317;
@@ -79,55 +80,22 @@ void interruptHandler() {
                                     
                                     if(toUnblock == NULL) {
                                         debug = 319;
-                                        LDST(currentState); // !!! da sostituire con schedule?
+                                        LDST(currentState);
                                     }
                                     else {
                                         debug = 320;
-                                        /* // Backup del currentState, faccio la SYSCALL e ripristino il currentState
-                                        state_t curStateBackup = *((state_t *)BIOSDATAPAGE);
-                                        SYSCALL(SENDMESSAGE, (unsigned int)toUnblock, (unsigned int)ACK, 0);
-                                        *((state_t *)BIOSDATAPAGE) = curStateBackup;    // scary
-
-                                        // Salvo lo status register su v0 del processo da sbloccare
-                                        toUnblock->p_s.reg_v0 = devStatusReg;
-
-                                        waiting_count--;
-                                        insertProcQ(&ready_queue, toUnblock);
-
-                                        LDST(currentState); // !!! da sostituire con schedule? */
-
-
-                                        // MODIFICHE IVAN 23-03
                                         // decremento processi in attesa
                                         waiting_count--;
-                                        // Backup del currentState, faccio la SYSCALL e ripristino il currentState
-                                        state_t curStateBackup = *((state_t *)BIOSDATAPAGE);
-                                        debug = 321;
-
                                         // Salvo lo status register su v0 del processo da sbloccare
                                         toUnblock->p_s.reg_v0 = devStatusReg;
                                         debug = 322;
+                                        // messaggio all'ssi per far sbloccare il processo
+                                        ssiDM(devStatusReg, toUnblock);
 
-                                        ssi_end_io_t endio = {
-                                            .status = devStatusReg,
-                                            .toUnblock = toUnblock,
-                                        };
-                                        ssi_payload_t payload = {
-                                            .service_code = ENDIO,
-                                            .arg = &endio,
-                                        };
-                                        debug = 323;
-
-                                        // TODO: non usare le SYSCALL, usare sendMessage direttamente impostando i registri
-                                        SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&payload, 0);
-                                        debug = 324;
-
-                                        *((state_t *)BIOSDATAPAGE) = curStateBackup;    // scary
                                         debug = 325;
 
-                                        LDST(currentState); // !!! da sostituire con schedule?
+                                        LDST(currentState);
                                         debug = 326;
-
                                     }
                                     debug = 327;
                                 }
@@ -170,7 +138,7 @@ unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev
 void PLTInterruptHandler() {
     debug = 339;
     setTIMER(TIMESLICE);
-    current_process->p_s = *currentState;
+    copyRegisters(&current_process->p_s, currentState);
     insertProcQ(&ready_queue, current_process);
     debug = 340;
     current_process = NULL;
@@ -181,8 +149,7 @@ void PLTInterruptHandler() {
 void ITInterruptHandler() {
     debug = 342;
     LDIT(PSECOND);
-    // pcb_PTR it; commentato da ivan
-    while(emptyProcQ(&pseudoclock_blocked_list)) {
+    while(!emptyProcQ(&pseudoclock_blocked_list)) {
         pcb_PTR toUnblock = removeProcQ(&pseudoclock_blocked_list);
         waiting_count--;
         insertProcQ(&ready_queue, toUnblock);
@@ -233,6 +200,6 @@ pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, un
     *devStatusReg = devReg->status;
     devReg->command = ACK;
     debug = 350;
-    // Mando un messaggio e sblocco il pcb che sta aspettando questo ext dev
+    // Sblocco il pcb che sta aspettando questo ext dev
     return removeProcQ(&external_blocked_list[line-1][dev]);
 }
