@@ -12,6 +12,7 @@ extern struct list_head terminal_blocked_list[2][MAXDEV];
 
 extern int debug;
 extern void klog_print(char *str);
+unsigned int aaa;
 
 /**
  * Gestisce una richiesta ricevuta da un processo
@@ -48,29 +49,10 @@ void SSIHandler() {
         break;
       case DOIO:
         // eseguire un input o output
-        debug = 513;
-        int dev = findDevice(((ssi_do_io_PTR) p_payload->arg)->commandAddr) / 10;
         debug = 514;
-        int devInstance = findDevice(((ssi_do_io_PTR) p_payload->arg)->commandAddr) % 10;
-        debug = 515;
-        if (dev == 4) {
-          debug = 516;
-          // dispositivo terminale receiver
-          insertProcQ(&terminal_blocked_list[1][devInstance], sender);
-        } else if (dev == 5) {
-          debug = 517;
-          // dispositivo terminale transmitter
-          insertProcQ(&terminal_blocked_list[0][devInstance], sender);
-        } else {
-          debug = 518;
-          // dispositivo periferico
-          insertProcQ(&external_blocked_list[dev][devInstance], sender);
-        }
-        waiting_count++;
-        debug = 519;
-        *((ssi_do_io_PTR) p_payload->arg)->commandAddr = ((ssi_do_io_PTR) p_payload->arg)->commandValue;
+        klog_print("COMOSEMOO?");
+        blockForDevice((ssi_do_io_PTR) p_payload->arg, sender);
         debug = 520;
-        // TODO: interruptHandler deve mandare un messaggio con il risultato dell'operazione
         break;
       case GETTIME:
         // restituire accumulated processor time
@@ -112,7 +94,7 @@ void SSIHandler() {
       case ENDIO:
         // terminazione operazione IO
         debug = 533;
-        klog_print("COMOSEMOOO");
+        klog_print("DALEEE");
         sender = ((ssi_end_io_PTR) p_payload->arg)->toUnblock;
         response = ((ssi_end_io_PTR) p_payload->arg)->status;
         debug = 534;
@@ -210,47 +192,59 @@ static void destroyProcess(pcb_t *p) {
 }
 
 /**
- * Trova il device per cui ha fatto richiesta il processo
+ * Blocca il processo nella lista del device per cui ha richiesto un'operazione
  * 
- * @param commandAddr puntatore al registro del device
- * @return device richiesto come device*10 + istanza
+ * @param arg puntatore alla struttura di DOIO
+ * @param toBlock processo da bloccare
  */
-static int findDevice(memaddr *commandAddr) {
-  memaddr devRegAddr = *commandAddr - 0x4;
+static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
+  int instance;
+  // calcola l'indirizzo base del registro
+  memaddr devRegAddr = (memaddr) arg->commandAddr - 0x4;
+  aaa = devRegAddr;
   switch (devRegAddr) {
     case START_DEVREG ... 0x100000C4:
-      return findInstance(devRegAddr - START_DEVREG);
+      // disks
+      instance = (devRegAddr - START_DEVREG) / 0x00000010;
+      insertProcQ(&external_blocked_list[0][instance], toBlock);
+      break;
     case 0x100000D4 ... 0x10000144:
-      return 10 + findInstance(devRegAddr - 0x100000D4);
+      // flash
+      instance = (devRegAddr - 0x100000D4) / 0x00000010;
+      insertProcQ(&external_blocked_list[1][instance], toBlock);
+      break;
     case 0x10000154 ... 0x100001C4:
-      return 20 + findInstance(devRegAddr - 0x10000154);
+      // network
+      instance = (devRegAddr - 0x10000154) / 0x00000010;
+      insertProcQ(&external_blocked_list[2][instance], toBlock);
+      break;
     case 0x100001D4 ... 0x10000244:
-      return 30 + findInstance(devRegAddr - 0x100001D4);
+      // printer
+      instance = (devRegAddr - 0x100001D4) / 0x00000010;
+      insertProcQ(&external_blocked_list[3][instance], toBlock);
+      break;
     case 0x10000254 ... 0x100002C4:
-      // TODO: per ora si usa solo il terminale 0 quindi rimando i controlli a più avanti per gli altri
+      // terminal
+      // TODO: per ora si usa solo il terminale 0 quindi rimando i controlli sulla instance a più avanti
       if (devRegAddr == 0x10000254 || devRegAddr == 0x10000264 || devRegAddr == 0x10000274
       || devRegAddr == 0x10000284 || devRegAddr == 0x10000294  || devRegAddr == 0x100002A4
       || devRegAddr == 0x100002B4 || devRegAddr == 0x100002C4) {
         // receiver
-        return 40;
+        instance = 0;
+        insertProcQ(&terminal_blocked_list[1][instance], toBlock);
       } else {
-        return 50;
+        // transmitter
+        instance = 0;
+        insertProcQ(&terminal_blocked_list[0][instance], toBlock);
       }
       break;
     default:
-      return 0;
+      // error
       break;
   }
-}
-
-/**
- * Trova l'istanza del device richiesto
- * 
- * @param distFromBase distanza tra il registro command del device e l'indirizzo base del device
- * @return istanza del device [0-7]
- */
-static int findInstance(memaddr distFromBase) {
-  return distFromBase / 0x00000010;
+  waiting_count++;
+  debug = 519;
+  *arg->commandAddr = arg->commandValue;
 }
 
 /**
