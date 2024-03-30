@@ -91,16 +91,13 @@ void pushMessage(struct list_head *head, msg_t *m) {
  */
 msg_t *popMessage(struct list_head *head, pcb_t *p_ptr) {
   if (list_empty(head)) {
-    klog_print("listaVuota");
     return NULL;
   } else {
     if (p_ptr == NULL) {
-      klog_print("anymessage");
       msg_PTR m = container_of(list_next(head), msg_t, m_list);
       list_del(list_next(head));
       return m;
     } else {
-      klog_print("pcb");
       msg_PTR i = NULL;
       list_for_each_entry(i, head, m_list) {
         if (i->m_sender == p_ptr) {

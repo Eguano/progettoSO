@@ -138,12 +138,6 @@ void receiveMessage() {
     msg_PTR messageExtracted = NULL;
     // colui da cui voglio ricevere
     pcb_PTR sender = (pcb_PTR)currentState->reg_a1;
-    if(sender == p2test_pcb) {
-        klog_print("testpcb");
-    }
-    else {
-        klog_print("dionera");
-    }
     memaddr *payload = (memaddr*) currentState->reg_a2;
 
     debug = 643;
@@ -160,7 +154,7 @@ void receiveMessage() {
         debug = 645;
         copyRegisters(&current_process->p_s, currentState);
         // TODO: il timer in teoria va in discesa, controllare incremento del p_time
-        current_process->p_time += getTIMER();
+        current_process->p_time += (TIMESLICE - getTIMER());
         current_process = NULL;
         schedule();
     } 
