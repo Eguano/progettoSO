@@ -68,22 +68,24 @@
 #define DISABLEINTS 0xFFFFFFFE
 
 /* Cause register constants */
-#define GETEXECCODE    0x0000007C
-#define CLEAREXECCODE  0xFFFFFF00
-#define LOCALTIMERINT  0x00000200   
-#define TIMERINTERRUPT 0x00000400   
-#define DISKINTERRUPT  0x00000800   
-#define FLASHINTERRUPT 0x00001000   
-#define PRINTINTERRUPT 0x00004000   
-#define TERMINTERRUPT  0x00008000   
-#define IOINTERRUPTS   0
-#define INTDEVBITMAP   0x10000040
-#define TLBINVLDL      2
-#define TLBINVLDS      3
-#define SYSEXCEPTION   8
-#define BREAKEXCEPTION 9
-#define PRIVINSTR      10
-#define CAUSESHIFT     2
+#define GETEXECCODE         0x0000007C
+#define CLEAREXECCODE       0xFFFFFF00
+#define INTPROCINTERRUPT    0x00000000
+#define LOCALTIMERINT       0x00000200   
+#define TIMERINTERRUPT      0x00000400   
+#define DISKINTERRUPT       0x00000800   
+#define FLASHINTERRUPT      0x00001000   
+#define NETWORKINTERRUPT    0x00002000
+#define PRINTINTERRUPT      0x00004000   
+#define TERMINTERRUPT       0x00008000   
+#define IOINTERRUPTS        0
+#define INTDEVBITMAP        0x10000040
+#define TLBINVLDL           2
+#define TLBINVLDS           3
+#define SYSEXCEPTION        8
+#define BREAKEXCEPTION      9
+#define PRIVINSTR           10
+#define CAUSESHIFT          2
 
 
 /* EntryLO register (NDVG) constants */

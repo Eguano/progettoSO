@@ -21,19 +21,22 @@ void interruptHandler() {
     
     // Estraggo il cause register
     unsigned int causeReg = currentState->cause;
+    debug = currentState->cause;
     debug = 301;
 
     // Gli interrupt sono abilitati a livello globale
-    if((currentState->status & IECON) == 1) {
+    if(((currentState->status & IEPON) >> 2) == 1) {
         debug = 302;
 
-        for(int line = 0; line < 6; line++) {
+        for(int line = 0; line < 8; line++) {
             debug = 303;
             // Se la line e' attiva
             if(intPendingInLine(causeReg, line)) {
                 debug = 304;
                 switch(line) {
                     case 0:
+                    break;
+                    case 1:
                         debug = 305;
                         if(intLineActive(1)) {
                             debug = 306;
@@ -41,7 +44,7 @@ void interruptHandler() {
                             debug = 307;
                         }
                     break;
-                    case 1:
+                    case 2:
                         debug = 308;
                         if(intLineActive(2)) {
                             debug = 309;
@@ -49,13 +52,16 @@ void interruptHandler() {
                             debug = 310;
                         }
                     break;
+                    case 5:
+                    break;
                     default:
                         debug = 311;
-                        // Controllo se la interrupt line corrente e' attiva facendo & e shiftando a sx di 8 + line + 1
-                        if(intLineActive(line + 1)) {
+                        // Controllo se la interrupt line corrente e' attiva facendo & e shiftando a sx di 8 + line
+                        if(intLineActive(line)) {
                             debug = 312;
+
                             // Punto alla interrupt line corrente usando la interrupt devices bit map
-                            unsigned int *intLaneMapped = (memaddr *)(INTDEVBITMAP + (0x4 * (line - 2)));
+                            unsigned int *intLaneMapped = (memaddr *)(INTDEVBITMAP + (0x4 * (line - 3)));
                             debug = 313;
 
                             for(int dev = 0; dev < 8; dev++) {
@@ -67,7 +73,7 @@ void interruptHandler() {
                                     unsigned int devStatusReg;
 
                                     // Sto trattando un terminal device interrupt   
-                                    if(line == 5) {
+                                    if(line == 7) {
                                         debug = 316;
                                         toUnblock = termDevInterruptHandler(&devStatusReg, line, dev);
                                     }
@@ -117,22 +123,27 @@ void interruptHandler() {
 
 memaddr *getDevReg(unsigned int intLine, unsigned int devIntLine) {
     debug = 335;
-    return (memaddr *)(START_DEVREG + (intLine * 0x08) + (devIntLine * 0x10));
+
+    return (memaddr *)(START_DEVREG + ((intLine - 3)* 0x80) + (devIntLine * 0x10));
 }
 
 unsigned short int intLineActive(unsigned short int line) {
     debug = 336;
-    return (((currentState->status & IMON) >> (8 + line)) & 0x1) == 1;
+
+    debug = (((currentState->status & IMON) >> (8 + line)) & 0x1) == 1;     
+    return debug;
 }
 
 unsigned short int intPendingInLine(unsigned int causeReg, unsigned short int line) {
     debug = 337;
-    return (((causeReg & interruptConsts[line]) >> (8 + line)) & 0x1) == 1;
+
+    debug = (((causeReg & interruptConsts[line]) >> (8 + line)) & 0x1) == 1;
+    return debug;
 }
 
 unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev) {
     debug = 338;
-    return ((*intLaneMapped) & deviceConsts[dev]) == 1;
+    return (((*intLaneMapped) & deviceConsts[dev]) >> dev) == 1;
 }
 
 void PLTInterruptHandler() {
@@ -141,6 +152,7 @@ void PLTInterruptHandler() {
     copyRegisters(&current_process->p_s, currentState);
     insertProcQ(&ready_queue, current_process);
     debug = 340;
+    current_process->p_time += TIMESLICE;
     current_process = NULL;
     schedule();
     debug = 341;
@@ -170,14 +182,14 @@ pcb_PTR termDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, u
     unsigned short int selector;
 
     // RICORDARSI CHE STATUS PUO' ANCHE SEGNALARE UN ERRORE
-    if(devReg->transm_status == OKCHARTRANS) {
+    if((devReg->transm_status & 0xFF) == OKCHARTRANS) {
         debug = 346;
         // Salvo il registro transmitter status
         *devStatusReg = devReg->transm_status;
         devReg->transm_command = ACK;
         selector = 0;
     }
-    else if(devReg->recv_status == OKCHARTRANS) {
+    else if((devReg->recv_status & 0xFF) == OKCHARTRANS) {
         debug = 347;
         // Salvo il registro reciever status
         *devStatusReg = devReg->recv_status;
@@ -200,6 +212,7 @@ pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, un
     *devStatusReg = devReg->status;
     devReg->command = ACK;
     debug = 350;
+
     // Sblocco il pcb che sta aspettando questo ext dev
-    return removeProcQ(&external_blocked_list[line-1][dev]);
+    return removeProcQ(&external_blocked_list[(line - 3)][dev]);
 }

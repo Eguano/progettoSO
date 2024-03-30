@@ -3,6 +3,8 @@
 static msg_t msgTable[MAXMESSAGES];
 LIST_HEAD(msgFree_h);
 
+extern void klog_print(char *str);
+
 /**
  * @brief Inizializza la lista dei messaggi inutilizzati.
  * 
