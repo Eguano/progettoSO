@@ -14,6 +14,6 @@ void sendMessage();
 void receiveMessage();
 void passUpOrDie(int);
 msg_PTR createMessage(pcb_PTR sender, unsigned int payload);
-int ssiDM(unsigned int devStatusReg, pcb_PTR toUnblock);
+int ssiDM(pcb_PTR toUnblock);
 
 #endif

@@ -94,8 +94,7 @@ void SSIHandler() {
         // terminazione operazione IO
         debug = 533;
         klog_print("DALEEE");
-        sender = ((ssi_end_io_PTR) p_payload->arg)->toUnblock;
-        response = ((ssi_end_io_PTR) p_payload->arg)->status;
+        response = sender->p_s.reg_v0;
         debug = 534;
         break;
       default:

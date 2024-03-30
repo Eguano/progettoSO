@@ -228,15 +228,11 @@ msg_PTR createMessage(pcb_PTR sender, unsigned int payload) {
  * @param toUnblock processo a cui mandare la response
  * @return stato dell'invio del messaggio
  */
-int ssiDM(unsigned int devStatusReg, pcb_PTR toUnblock) {
+int ssiDM(pcb_PTR toUnblock) {
     debug = 670;
-    ssi_end_io_t endio = {
-        .status = devStatusReg,
-        .toUnblock = toUnblock,
-    };
     ssi_payload_t payload = {
         .service_code = ENDIO,
-        .arg = &endio,
+        .arg = NULL,
     };
     
     int messagePushed = FALSE, found = FALSE, toReturn;
@@ -253,7 +249,7 @@ int ssiDM(unsigned int devStatusReg, pcb_PTR toUnblock) {
     if (!found && (ssi_pcb == current_process || isInList(&ready_queue, ssi_pcb))) {
         debug = 673;
         found = TRUE;
-        msg_PTR toPush = createMessage(NULL, (unsigned int) &payload);
+        msg_PTR toPush = createMessage(toUnblock, (unsigned int) &payload);
         if (toPush != NULL) {
             insertMessage(&ssi_pcb->msg_inbox, toPush);
             messagePushed = TRUE;
@@ -264,7 +260,7 @@ int ssiDM(unsigned int devStatusReg, pcb_PTR toUnblock) {
     // L'ssi non è in nessuna delle precedenti liste, quindi era bloccato per la receive
     if(!found) {
         debug = 677;
-        msg_PTR toPush = createMessage(NULL, (unsigned int) &payload);
+        msg_PTR toPush = createMessage(toUnblock, (unsigned int) &payload);
         if (toPush != NULL) {
             insertMessage(&ssi_pcb->msg_inbox, toPush);
             messagePushed = TRUE;

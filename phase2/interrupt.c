@@ -12,7 +12,7 @@ extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
 extern state_t *currentState;
 extern void copyRegisters(state_t *dest, state_t *src);
-extern int ssiDM(unsigned int devStatusReg, pcb_PTR toUnblock);
+extern int ssiDM(pcb_PTR toUnblock);
 
 extern int debug;
 
@@ -96,7 +96,7 @@ void interruptHandler() {
                                         toUnblock->p_s.reg_v0 = devStatusReg;
                                         debug = 322;
                                         // messaggio all'ssi per far sbloccare il processo
-                                        ssiDM(devStatusReg, toUnblock);
+                                        ssiDM(toUnblock);
 
                                         debug = 325;
 
@@ -119,6 +119,57 @@ void interruptHandler() {
         debug = 333;
     }
     debug = 334;
+}
+
+void interruptDEBUG() {
+        int line = 7;
+        // Punto alla interrupt line corrente usando la interrupt devices bit map
+        unsigned int *intLaneMapped = (memaddr *)(INTDEVBITMAP + (0x4 * (line - 3)));
+        debug = 313;
+
+        for(int dev = 0; dev < 8; dev++) {
+            debug = 314;
+            if(intPendingOnDev(intLaneMapped, dev)) {
+                debug = 315;
+                
+                pcb_PTR toUnblock;
+                unsigned int devStatusReg;
+
+                // Sto trattando un terminal device interrupt   
+                if(line == 7) {
+                    debug = 316;
+                    toUnblock = termDevInterruptHandler(&devStatusReg, line, dev);
+                }
+                // Sto trattando un external device interrupt
+                else {
+                    debug = 317;
+                    toUnblock = extDevInterruptHandler(&devStatusReg, line, dev);
+                }
+                debug = 318;
+                
+                if(toUnblock == NULL) {
+                    debug = 319;
+                    schedule();
+                }
+                else {
+                    debug = 320;
+                    // decremento processi in attesa
+                    waiting_count--;
+                    // Salvo lo status register su v0 del processo da sbloccare
+                    toUnblock->p_s.reg_v0 = devStatusReg;
+                    debug = 322;
+                    // messaggio all'ssi per far sbloccare il processo
+                    ssiDM(toUnblock);
+
+                    debug = 325;
+
+                    schedule();
+                    debug = 326;
+                }
+                debug = 327;
+            }
+            debug = 328;
+        }
 }
 
 memaddr *getDevReg(unsigned int intLine, unsigned int devIntLine) {
