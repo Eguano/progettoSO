@@ -117,6 +117,7 @@ void print()
             };
             SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&payload), 0);
             SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&status), 0);
+            klog_print("stampato");
 
             if ((status & TERMSTATMASK) != RECVD)
                 PANIC();
@@ -181,7 +182,6 @@ void test()
     // test send and receive
     SYSCALL(SENDMESSAGE, (unsigned int)test_pcb, 0, 0);
     pcb_PTR sender = (pcb_PTR)SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
-    klog_print("aishdoiahs");
 
     if (sender != test_pcb)
         PANIC();
@@ -217,6 +217,8 @@ void test()
     p2state.reg_sp = hp_p2state.reg_sp - QPAGE;
     p2state.pc_epc = (memaddr)p2;
     p2state.status |= IEPBITON | CAUSEINTMASK | TEBITON;
+
+    klog_print("TEST avanza");
 
     STST(&p3state);
     p3state.reg_sp = p2state.reg_sp - QPAGE;

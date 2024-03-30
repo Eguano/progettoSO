@@ -12,7 +12,6 @@ extern struct list_head terminal_blocked_list[2][MAXDEV];
 
 extern int debug;
 extern void klog_print(char *str);
-unsigned int aaa;
 
 /**
  * Gestisce una richiesta ricevuta da un processo
@@ -201,7 +200,6 @@ static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
   int instance;
   // calcola l'indirizzo base del registro
   memaddr devRegAddr = (memaddr) arg->commandAddr - 0x4;
-  aaa = devRegAddr;
   switch (devRegAddr) {
     case START_DEVREG ... 0x100000C4:
       // disks

@@ -6,6 +6,7 @@ extern int process_count;
 extern int waiting_count;
 extern pcb_PTR current_process;
 extern struct list_head ready_queue;
+extern void interruptHandler();
 
 extern int debug;
 
@@ -26,6 +27,7 @@ void schedule() {
       // waiting for an interrupt
       setSTATUS((getSTATUS() | IECON | IMON) & !TEBITON);
       WAIT();
+      interruptHandler();
     } else if (process_count > 0 && waiting_count == 0) {
       debug = 404;
       // deadlock

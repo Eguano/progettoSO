@@ -8,8 +8,6 @@ extern pcb_PTR current_process;
 extern struct list_head ready_queue;
 extern struct list_head pseudoclock_blocked_list;
 extern pcb_PTR ssi_pcb;
-extern pcb_PTR test_pcb;
-extern pcb_PTR p2test_pcb;
 extern state_t *currentState;
 extern void terminateProcess(pcb_t *proc);
 extern void copyRegisters(state_t *dest, state_t *src);
@@ -141,19 +139,13 @@ void receiveMessage() {
     memaddr *payload = (memaddr*) currentState->reg_a2;
 
     debug = 643;
-    if(sender == ANYMESSAGE) {
-        messageExtracted = popMessage(&current_process->msg_inbox, NULL);
-    }
-    else {
-        messageExtracted = popMessage(&current_process->msg_inbox, sender);
-    }
+    messageExtracted = popMessage(&current_process->msg_inbox, sender);
     debug = 644;
 
     // Il messaggio non è stato trovato (va bloccato)
     if(messageExtracted == NULL) {
         debug = 645;
         copyRegisters(&current_process->p_s, currentState);
-        // TODO: il timer in teoria va in discesa, controllare incremento del p_time
         current_process->p_time += (TIMESLICE - getTIMER());
         current_process = NULL;
         schedule();
@@ -162,7 +154,7 @@ void receiveMessage() {
     else {
         debug = 647;
         // Viene memorizzato il payload del messaggio nella zona puntata da reg_a2
-        if(payload != 0) {
+        if(payload != NULL) {
             debug = 648;
             *payload = messageExtracted->m_payload;
         }
