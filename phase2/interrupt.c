@@ -86,7 +86,9 @@ void interruptHandler() {
                                     
                                     if(toUnblock == NULL) {
                                         debug = 319;
-                                        LDST(currentState);
+                                        // LDST(currentState);
+                                        current_process = NULL;
+                                        schedule();
                                     }
                                     else {
                                         debug = 320;
@@ -100,7 +102,9 @@ void interruptHandler() {
 
                                         debug = 325;
 
-                                        LDST(currentState);
+                                        // LDST(currentState);
+                                        current_process = NULL;
+                                        schedule();
                                         debug = 326;
                                     }
                                     debug = 327;
@@ -199,7 +203,6 @@ unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev
 
 void PLTInterruptHandler() {
     debug = 339;
-    setTIMER(TIMESLICE);
     copyRegisters(&current_process->p_s, currentState);
     insertProcQ(&ready_queue, current_process);
     debug = 340;
