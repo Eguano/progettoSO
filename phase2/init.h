@@ -30,7 +30,7 @@ pcb_PTR p2test_pcb;
 state_t *currentState;
 
 // DEBUG: traced region
-int debug;
+unsigned int debug;
 
 static void initialize();
 int isInDevicesLists(pcb_t *p);

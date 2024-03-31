@@ -117,7 +117,6 @@ void print()
             };
             SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&payload), 0);
             SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&status), 0);
-            klog_print("stampato");
 
             if ((status & TERMSTATMASK) != RECVD)
                 PANIC();
@@ -217,8 +216,6 @@ void test()
     p2state.reg_sp = hp_p2state.reg_sp - QPAGE;
     p2state.pc_epc = (memaddr)p2;
     p2state.status |= IEPBITON | CAUSEINTMASK | TEBITON;
-
-    klog_print("TEST avanza");
 
     STST(&p3state);
     p3state.reg_sp = p2state.reg_sp - QPAGE;

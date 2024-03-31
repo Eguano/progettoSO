@@ -10,7 +10,7 @@ extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 
-extern int debug;
+extern unsigned int debug;
 extern void klog_print(char *str);
 
 /**
@@ -18,10 +18,9 @@ extern void klog_print(char *str);
  */
 void SSIHandler() {
   while (TRUE) {
-    debug = 505;
+    debug = 0x500;
     ssi_payload_PTR p_payload;
     pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
-    debug = 506;
     // risposta da inviare al sender
     unsigned int response = 0;
 
@@ -29,86 +28,67 @@ void SSIHandler() {
     switch (p_payload->service_code) {
       case CREATEPROCESS:
         // creare un nuovo processo
-        debug = 507;
+        debug = 0x501;
         response = createProcess((ssi_create_process_PTR) p_payload->arg, sender);
-        klog_print("Processo creato.");
-        debug = 508;
         break;
       case TERMPROCESS:
         // eliminare un processo esistente
-        debug = 509;
+        debug = 0x502;
         if (p_payload->arg == NULL) {
-          debug = 510;
           terminateProcess(sender);
         } else {
-          debug = 511;
           terminateProcess((pcb_PTR) p_payload->arg);
         }
-        debug = 512;
         break;
       case DOIO:
         // eseguire un input o output
-        debug = 514;
-        klog_print("COMOSEMOO?");
+        debug = 0x503;
         blockForDevice((ssi_do_io_PTR) p_payload->arg, sender);
-        debug = 520;
         break;
       case GETTIME:
         // restituire accumulated processor time
-        debug = 521;
+        debug = 0x504;
         response = ((unsigned int) sender->p_time) + (TIMESLICE - getTIMER());
-        debug = 522;
         break;
       case CLOCKWAIT:
         // bloccare il processo per lo pseudoclock
-        debug = 523;
+        debug = 0x505;
         insertProcQ(&pseudoclock_blocked_list, sender);
         waiting_count++;
-        debug = 524;
         break;
       case GETSUPPORTPTR:
         // restituire la struttura di supporto
-        debug = 525;
+        debug = 0x506;
         response = (unsigned int) sender->p_supportStruct;
-        debug = 526;
         break;
       case GETPROCESSID:
         // restituire il pid del sender o del suo genitore
-        debug = 527;
+        debug = 0x507;
         if (((unsigned int) p_payload->arg) == 0) {
-          debug = 528;
           response = sender->p_pid;
         } else {
-          debug = 529;
           if (sender->p_parent == NULL) {
-            debug = 530;
             response = 0;
           } else {
-            debug = 531;
             response = sender->p_parent->p_pid;
           }
         }
-        debug = 532;
         break;
       case ENDIO:
         // terminazione operazione IO
-        debug = 533;
-        klog_print("DALEEE");
+        debug = 0x508;
         response = sender->p_s.reg_v0;
-        debug = 534;
         break;
       default:
         // codice non esiste, terminare processo richiedente e tutta la sua progenie
-        debug = 535;
+        debug = 0x509;
         terminateProcess(sender);
-        debug = 536;
         break;
     }
-    debug = 537;
+    debug = 0x510;
     if (p_payload->service_code != DOIO) {
       SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
     }
-    debug = 538;
   }
 }
 
@@ -240,7 +220,6 @@ static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
       break;
   }
   waiting_count++;
-  debug = 519;
   *arg->commandAddr = arg->commandValue;
 }
 
