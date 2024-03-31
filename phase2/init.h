@@ -16,7 +16,6 @@ int waiting_count;
 pcb_PTR current_process;
 // queue of PCBs in ready state
 struct list_head ready_queue;
-// TODO: sostituire le liste dei device con semplici puntatori (non fondamentale)
 // a list of blocked PCBs for every external device
 struct list_head external_blocked_list[4][MAXDEV];
 // list of blocked PCBs for the pseudo-clock
@@ -31,8 +30,9 @@ pcb_PTR p2test_pcb;
 state_t *currentState;
 
 // DEBUG: traced region
-int debug;
+unsigned int debug;
 
 static void initialize();
+int isInDevicesLists(pcb_t *p);
 
 #endif
