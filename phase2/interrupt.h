@@ -22,6 +22,4 @@ void ITInterruptHandler();
 pcb_PTR termDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, unsigned int dev);
 pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, unsigned int dev);
 
-void interruptDEBUG();
-
 #endif

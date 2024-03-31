@@ -20,7 +20,6 @@ void interruptHandler() {
     debug = 0x300;
     // Estraggo il cause register
     unsigned int causeReg = currentState->cause;
-    debug = currentState->cause;
 
     // Gli interrupt sono abilitati a livello globale
     if(((currentState->status & IEPON) >> 2) == 1) {
@@ -184,52 +183,4 @@ pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, un
 
     // Sblocco il pcb che sta aspettando questo ext dev
     return removeProcQ(&external_blocked_list[(line - 3)][dev]);
-}
-
-
-void interruptDEBUG() {
-    debug = 0x320;
-    int line = 7;
-    // Punto alla interrupt line corrente usando la interrupt devices bit map
-    unsigned int *intLaneMapped = (memaddr *)(INTDEVBITMAP + (0x4 * (line - 3)));
-
-    for(int dev = 0; dev < 8; dev++) {
-        if(intPendingOnDev(intLaneMapped, dev)) {
-            debug = 0x321;
-            
-            pcb_PTR toUnblock;
-            unsigned int devStatusReg;
-
-            // Sto trattando un terminal device interrupt   
-            if(line == 7) {
-                toUnblock = termDevInterruptHandler(&devStatusReg, line, dev);
-            }
-            // Sto trattando un external device interrupt
-            else {
-                toUnblock = extDevInterruptHandler(&devStatusReg, line, dev);
-            }
-            
-            if(toUnblock == NULL) {
-                debug = 0x322;
-                if(current_process == NULL)
-                    schedule();
-                else
-                    LDST(currentState);
-            }
-            else {
-                debug = 0x323;
-                // decremento processi in attesa
-                waiting_count--;
-                // Salvo lo status register su v0 del processo da sbloccare
-                toUnblock->p_s.reg_v0 = devStatusReg;
-                // messaggio all'ssi per far sbloccare il processo
-                ssiDM(toUnblock);
-
-                if(current_process == NULL)
-                    schedule();
-                else
-                    LDST(currentState);
-            }
-        }
-    }
 }

@@ -9,7 +9,6 @@ extern struct list_head ready_queue;
 extern void interruptHandler();
 
 extern unsigned int debug;
-extern void interruptDEBUG();
 
 /**
  * Carica un processo per essere mandato in run, altrimenti blocca l'esecuzione.
@@ -26,8 +25,7 @@ void schedule() {
       debug = 0x401;
       setSTATUS((getSTATUS() | IECON | IMON) & !TEBITON);
       WAIT();
-      // TODO: da generalizzare
-      interruptDEBUG();
+      interruptHandler();
     } else if (process_count > 0 && waiting_count == 0) {
       // deadlock
       PANIC();
