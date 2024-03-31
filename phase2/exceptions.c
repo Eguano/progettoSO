@@ -5,14 +5,14 @@
 extern state_t *currentState;
 extern void interruptHandler();
 
-extern int debug;
+extern unsigned int debug;
 
 /**
  * Gestisce il caso in cui si prova accedere ad un indirizzo 
  * virtuale che non ha un corrispettivo nella TLB
  */
 void uTLB_RefillHandler() {
-    debug = 100;
+    debug = 0x100;
     setENTRYHI(0x80000000);
     setENTRYLO(0x00000000);
     TLBWR();
@@ -24,7 +24,7 @@ void uTLB_RefillHandler() {
  * 
  */
 void exceptionHandler() {
-    debug = 102;
+    debug = 0x101;
     switch((getCAUSE() & GETEXECCODE) >> CAUSESHIFT) {
         case IOINTERRUPTS:
             // External Device Interrupt
@@ -51,7 +51,6 @@ void exceptionHandler() {
             passUpOrDie(GENERALEXCEPT);
             break;
 	}
-    debug = 103;
 }
 
 /*
