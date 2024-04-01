@@ -18,10 +18,8 @@ extern unsigned int debug;
 
 void interruptHandler() {
     debug = 0x300;
-    // Estraggo il cause register
-    unsigned int causeReg = currentState->cause;
-    debug = currentState->cause;
-
+    
+    unsigned int causeReg = getCAUSE();
     // Gli interrupt sono abilitati a livello globale
     if(((currentState->status & IEPON) >> 2) == 1) {
         debug = 0x301;
@@ -45,7 +43,7 @@ void interruptHandler() {
                         if(intLineActive(2)) {
                             debug = 0x306;
                             ITInterruptHandler();
-                        }
+                        }   
                     break;
                     case 5:
                     break;
@@ -116,7 +114,7 @@ unsigned short int intLineActive(unsigned short int line) {
 }
 
 unsigned short int intPendingInLine(unsigned int causeReg, unsigned short int line) {
-    return (((causeReg & interruptConsts[line]) >> (8 + line)) & 0x1) == 1;
+    return (((causeReg & interruptConsts[line]) >> (8 + line))) == 1;
 }
 
 unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev) {
@@ -185,52 +183,4 @@ pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, un
 
     // Sblocco il pcb che sta aspettando questo ext dev
     return removeProcQ(&external_blocked_list[(line - 3)][dev]);
-}
-
-
-void interruptDEBUG() {
-    debug = 0x320;
-    int line = 7;
-    // Punto alla interrupt line corrente usando la interrupt devices bit map
-    unsigned int *intLaneMapped = (memaddr *)(INTDEVBITMAP + (0x4 * (line - 3)));
-
-    for(int dev = 0; dev < 8; dev++) {
-        if(intPendingOnDev(intLaneMapped, dev)) {
-            debug = 0x321;
-            
-            pcb_PTR toUnblock;
-            unsigned int devStatusReg;
-
-            // Sto trattando un terminal device interrupt   
-            if(line == 7) {
-                toUnblock = termDevInterruptHandler(&devStatusReg, line, dev);
-            }
-            // Sto trattando un external device interrupt
-            else {
-                toUnblock = extDevInterruptHandler(&devStatusReg, line, dev);
-            }
-            
-            if(toUnblock == NULL) {
-                debug = 0x322;
-                if(current_process == NULL)
-                    schedule();
-                else
-                    LDST(currentState);
-            }
-            else {
-                debug = 0x323;
-                // decremento processi in attesa
-                waiting_count--;
-                // Salvo lo status register su v0 del processo da sbloccare
-                toUnblock->p_s.reg_v0 = devStatusReg;
-                // messaggio all'ssi per far sbloccare il processo
-                ssiDM(toUnblock);
-
-                if(current_process == NULL)
-                    schedule();
-                else
-                    LDST(currentState);
-            }
-        }
-    }
 }
