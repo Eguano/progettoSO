@@ -18,9 +18,8 @@ extern unsigned int debug;
 
 void interruptHandler() {
     debug = 0x300;
-    // Estraggo il cause register
-    unsigned int causeReg = currentState->cause;
-
+    
+    unsigned int causeReg = getCAUSE();
     // Gli interrupt sono abilitati a livello globale
     if(((currentState->status & IEPON) >> 2) == 1) {
         debug = 0x301;
@@ -44,7 +43,7 @@ void interruptHandler() {
                         if(intLineActive(2)) {
                             debug = 0x306;
                             ITInterruptHandler();
-                        }
+                        }   
                     break;
                     case 5:
                     break;
@@ -115,7 +114,7 @@ unsigned short int intLineActive(unsigned short int line) {
 }
 
 unsigned short int intPendingInLine(unsigned int causeReg, unsigned short int line) {
-    return (((causeReg & interruptConsts[line]) >> (8 + line)) & 0x1) == 1;
+    return (((causeReg & interruptConsts[line]) >> (8 + line))) == 1;
 }
 
 unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev) {
