@@ -17,11 +17,9 @@ extern void test();
 void main() {
   // nucleus initialization
   initialize();
-  debug = 200;
 
   // load Interval Timer 100ms
   LDIT(PSECOND);
-  debug = 201;
 
   // istantiate a first process
   ssi_pcb = allocPcb();
@@ -30,7 +28,6 @@ void main() {
   ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9 = (memaddr) SSIHandler;
   insertProcQ(&ready_queue, ssi_pcb);
   process_count++;
-  debug = 202;
 
   // istantiate a second process
   p2test_pcb = allocPcb();
@@ -40,7 +37,6 @@ void main() {
   p2test_pcb->p_s.pc_epc = p2test_pcb->p_s.reg_t9 = (memaddr) test;
   insertProcQ(&ready_queue, p2test_pcb);
   process_count++;
-  debug = 203;
 
   // call the scheduler
   schedule();
@@ -51,19 +47,16 @@ void main() {
  * le variabili globali
  */
 static void initialize() {
-  debug = 204;
   // Pass Up Vector for Processor 0
   passupvector_t *passUpVec = (passupvector_t *) PASSUPVECTOR;
   passUpVec->tlb_refill_handler = (memaddr) uTLB_RefillHandler;
-  passUpVec->tlb_refill_stackPtr = (memaddr) KERNELSTACK;
+  passUpVec->tlb_refill_stackPtr = KERNELSTACK;
   passUpVec->exception_handler = (memaddr) exceptionHandler;
-  passUpVec->exception_stackPtr = (memaddr) KERNELSTACK;
-  debug = 205;
+  passUpVec->exception_stackPtr = KERNELSTACK;
 
   // level 2 structures
   initPcbs();
   initMsgs();
-  debug = 206;
 
   // initialize variables
   process_count = 0;
@@ -82,7 +75,6 @@ static void initialize() {
   }
   mkEmptyProcQ(&pseudoclock_blocked_list);
   currentState = (state_t *)BIOSDATAPAGE;
-  debug = 206;
 }
 
 /**

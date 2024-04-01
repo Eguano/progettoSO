@@ -10,7 +10,7 @@ extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 
-extern int debug;
+extern unsigned int debug;
 extern void klog_print(char *str);
 
 /**
@@ -18,10 +18,9 @@ extern void klog_print(char *str);
  */
 void SSIHandler() {
   while (TRUE) {
-    debug = 505;
+    debug = 0x500;
     ssi_payload_PTR p_payload;
     pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
-    debug = 506;
     // risposta da inviare al sender
     unsigned int response = 0;
 
@@ -29,106 +28,67 @@ void SSIHandler() {
     switch (p_payload->service_code) {
       case CREATEPROCESS:
         // creare un nuovo processo
-        debug = 507;
+        debug = 0x501;
         response = createProcess((ssi_create_process_PTR) p_payload->arg, sender);
-        klog_print("Processo creato.");
-        debug = 508;
         break;
       case TERMPROCESS:
         // eliminare un processo esistente
-        debug = 509;
+        debug = 0x502;
         if (p_payload->arg == NULL) {
-          debug = 510;
           terminateProcess(sender);
         } else {
-          debug = 511;
           terminateProcess((pcb_PTR) p_payload->arg);
         }
-        debug = 512;
         break;
       case DOIO:
         // eseguire un input o output
-        debug = 513;
-        int dev = findDevice(((ssi_do_io_PTR) p_payload->arg)->commandAddr) / 10;
-        debug = 514;
-        int devInstance = findDevice(((ssi_do_io_PTR) p_payload->arg)->commandAddr) % 10;
-        debug = 515;
-        if (dev == 4) {
-          debug = 516;
-          // dispositivo terminale receiver
-          insertProcQ(&terminal_blocked_list[1][devInstance], sender);
-        } else if (dev == 5) {
-          debug = 517;
-          // dispositivo terminale transmitter
-          insertProcQ(&terminal_blocked_list[0][devInstance], sender);
-        } else {
-          debug = 518;
-          // dispositivo periferico
-          insertProcQ(&external_blocked_list[dev][devInstance], sender);
-        }
-        waiting_count++;
-        debug = 519;
-        *((ssi_do_io_PTR) p_payload->arg)->commandAddr = ((ssi_do_io_PTR) p_payload->arg)->commandValue;
-        debug = 520;
-        // TODO: interruptHandler deve mandare un messaggio con il risultato dell'operazione
+        debug = 0x503;
+        blockForDevice((ssi_do_io_PTR) p_payload->arg, sender);
         break;
       case GETTIME:
         // restituire accumulated processor time
-        debug = 521;
+        debug = 0x504;
         response = ((unsigned int) sender->p_time) + (TIMESLICE - getTIMER());
-        debug = 522;
         break;
       case CLOCKWAIT:
         // bloccare il processo per lo pseudoclock
-        debug = 523;
+        debug = 0x505;
         insertProcQ(&pseudoclock_blocked_list, sender);
         waiting_count++;
-        debug = 524;
         break;
       case GETSUPPORTPTR:
         // restituire la struttura di supporto
-        debug = 525;
+        debug = 0x506;
         response = (unsigned int) sender->p_supportStruct;
-        debug = 526;
         break;
       case GETPROCESSID:
         // restituire il pid del sender o del suo genitore
-        debug = 527;
+        debug = 0x507;
         if (((unsigned int) p_payload->arg) == 0) {
-          debug = 528;
           response = sender->p_pid;
         } else {
-          debug = 529;
           if (sender->p_parent == NULL) {
-            debug = 530;
             response = 0;
           } else {
-            debug = 531;
             response = sender->p_parent->p_pid;
           }
         }
-        debug = 532;
         break;
       case ENDIO:
         // terminazione operazione IO
-        debug = 533;
-        klog_print("COMOSEMOOO");
-        sender = ((ssi_end_io_PTR) p_payload->arg)->toUnblock;
-        response = ((ssi_end_io_PTR) p_payload->arg)->status;
-        debug = 534;
+        debug = 0x508;
+        response = sender->p_s.reg_v0;
         break;
       default:
         // codice non esiste, terminare processo richiedente e tutta la sua progenie
-        debug = 535;
+        debug = 0x509;
         terminateProcess(sender);
-        debug = 536;
         break;
     }
-    debug = 537;
+    debug = 0x510;
     if (p_payload->service_code != DOIO) {
       SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
     }
-    debug = 538;
   }
 }
 
@@ -210,47 +170,57 @@ static void destroyProcess(pcb_t *p) {
 }
 
 /**
- * Trova il device per cui ha fatto richiesta il processo
+ * Blocca il processo nella lista del device per cui ha richiesto un'operazione
  * 
- * @param commandAddr puntatore al registro del device
- * @return device richiesto come device*10 + istanza
+ * @param arg puntatore alla struttura di DOIO
+ * @param toBlock processo da bloccare
  */
-static int findDevice(memaddr *commandAddr) {
-  memaddr devRegAddr = *commandAddr - 0x4;
+static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
+  int instance;
+  // calcola l'indirizzo base del registro
+  memaddr devRegAddr = (memaddr) arg->commandAddr - 0x4;
   switch (devRegAddr) {
     case START_DEVREG ... 0x100000C4:
-      return findInstance(devRegAddr - START_DEVREG);
+      // disks
+      instance = (devRegAddr - START_DEVREG) / 0x00000010;
+      insertProcQ(&external_blocked_list[0][instance], toBlock);
+      break;
     case 0x100000D4 ... 0x10000144:
-      return 10 + findInstance(devRegAddr - 0x100000D4);
+      // flash
+      instance = (devRegAddr - 0x100000D4) / 0x00000010;
+      insertProcQ(&external_blocked_list[1][instance], toBlock);
+      break;
     case 0x10000154 ... 0x100001C4:
-      return 20 + findInstance(devRegAddr - 0x10000154);
+      // network
+      instance = (devRegAddr - 0x10000154) / 0x00000010;
+      insertProcQ(&external_blocked_list[2][instance], toBlock);
+      break;
     case 0x100001D4 ... 0x10000244:
-      return 30 + findInstance(devRegAddr - 0x100001D4);
+      // printer
+      instance = (devRegAddr - 0x100001D4) / 0x00000010;
+      insertProcQ(&external_blocked_list[3][instance], toBlock);
+      break;
     case 0x10000254 ... 0x100002C4:
-      // TODO: per ora si usa solo il terminale 0 quindi rimando i controlli a più avanti per gli altri
+      // terminal
+      // TODO: per ora si usa solo il terminale 0 quindi rimando i controlli sulla instance a più avanti
       if (devRegAddr == 0x10000254 || devRegAddr == 0x10000264 || devRegAddr == 0x10000274
       || devRegAddr == 0x10000284 || devRegAddr == 0x10000294  || devRegAddr == 0x100002A4
       || devRegAddr == 0x100002B4 || devRegAddr == 0x100002C4) {
         // receiver
-        return 40;
+        instance = 0;
+        insertProcQ(&terminal_blocked_list[1][instance], toBlock);
       } else {
-        return 50;
+        // transmitter
+        instance = 0;
+        insertProcQ(&terminal_blocked_list[0][instance], toBlock);
       }
       break;
     default:
-      return 0;
+      // error
       break;
   }
-}
-
-/**
- * Trova l'istanza del device richiesto
- * 
- * @param distFromBase distanza tra il registro command del device e l'indirizzo base del device
- * @return istanza del device [0-7]
- */
-static int findInstance(memaddr distFromBase) {
-  return distFromBase / 0x00000010;
+  waiting_count++;
+  *arg->commandAddr = arg->commandValue;
 }
 
 /**

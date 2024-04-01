@@ -9,7 +9,7 @@
 #include "../headers/const.h"
 #include "../headers/types.h"
 
-unsigned int interruptConsts[] = { LOCALTIMERINT, TIMERINTERRUPT, DISKINTERRUPT, FLASHINTERRUPT, PRINTINTERRUPT, TERMINTERRUPT };
+unsigned int interruptConsts[] = { INTPROCINTERRUPT, LOCALTIMERINT, TIMERINTERRUPT, DISKINTERRUPT, FLASHINTERRUPT, NETWORKINTERRUPT, PRINTINTERRUPT, TERMINTERRUPT };
 unsigned int deviceConsts[] = { DEV0ON, DEV1ON, DEV2ON, DEV3ON, DEV4ON, DEV5ON, DEV6ON, DEV7ON };
 
 void interruptHandler();
