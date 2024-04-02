@@ -19,6 +19,8 @@ void initMsgs() {
  * @param m puntatore al messaggio da liberare
  */
 void freeMsg(msg_t *m) {
+  m->m_sender = NULL;
+  m->m_payload = 0;
   list_add_tail(&(m->m_list), &msgFree_h);
 }
 
