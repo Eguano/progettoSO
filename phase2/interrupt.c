@@ -1,6 +1,7 @@
 #include "interrupt.h"
 
 #include "../phase1/headers/pcb.h"
+#include "../phase1/headers/msg.h"
 #include "scheduler.h"
 
 extern int waiting_count;
@@ -12,7 +13,12 @@ extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
 extern state_t *currentState;
 extern void copyRegisters(state_t *dest, state_t *src);
-extern void ssiDM(pcb_PTR toUnblock);
+
+msg_PTR createMessage(pcb_PTR sender, unsigned int payload);
+ssi_payload_t payloadDM = {
+    .service_code = ENDIO,
+    .arg = NULL,
+};
 
 extern unsigned int debug;
 
@@ -87,8 +93,15 @@ void interruptHandler() {
                                         waiting_count--;
                                         // Salvo lo status register su v0 del processo da sbloccare
                                         toUnblock->p_s.reg_v0 = devStatusReg;
-                                        // messaggio all'ssi per far sbloccare il processo
-                                        ssiDM(toUnblock);
+
+                                        msg_PTR toPush = createMessage(toUnblock, (unsigned int) &payloadDM);
+                                        if (toPush != NULL) {
+                                            insertMessage(&ssi_pcb->msg_inbox, toPush);
+                                            // controlla se l'ssi è in esecuzione o in readyQueue
+                                            if (ssi_pcb != current_process && !isInList(&ready_queue, ssi_pcb)) {
+                                                insertProcQ(&ready_queue, ssi_pcb);
+                                            }
+                                        } 
 
                                         if(current_process == NULL)
                                             schedule();

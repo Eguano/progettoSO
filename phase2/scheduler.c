@@ -6,7 +6,6 @@ extern int process_count;
 extern int waiting_count;
 extern pcb_PTR current_process;
 extern struct list_head ready_queue;
-extern void interruptHandler();
 
 extern unsigned int debug;
 
