@@ -7,4 +7,9 @@ p3 started correctly
 p3 - CLOCKWAIT OK
 p3 - CPU time correctly maintained
 p1 knows p3 ended
-hkernel panic()
+hp_p1 starts
+hp_p2 starts
+first incarnation of p4 starts
+second incarnation of p4 starts
+p4 is OK
+kernel panic()

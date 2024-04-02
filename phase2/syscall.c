@@ -14,7 +14,6 @@ extern void copyRegisters(state_t *dest, state_t *src);
 extern int isInDevicesLists(pcb_t *p);
 
 extern unsigned int debug;
-extern void klog_print(char *str);
 
 /**
  * Gestisce la richiesta di una system call send o receive
@@ -190,33 +189,4 @@ msg_PTR createMessage(pcb_PTR sender, unsigned int payload) {
         newMsg->m_payload = payload;
     }
     return newMsg;
-}
-
-/**
- * Manda un messaggio diretto all'SSI senza usare le SYSCALL.
- * Usato dall'interrupt handler per segnalare la fine di una DOIO
- * 
- * @param toUnblock processo a cui mandare la response
- */
-void ssiDM(pcb_PTR toUnblock) {
-    debug = 0x616;
-    ssi_payload_t payload = {
-        .service_code = ENDIO,
-        .arg = NULL,
-    };
-
-    // controlla se l'ssi è in esecuzione o in readyQueue
-    if (ssi_pcb == current_process || isInList(&ready_queue, ssi_pcb)) {
-        debug = 0x617;
-        msg_PTR toPush = createMessage(toUnblock, (unsigned int) &payload);
-        if (toPush != NULL) insertMessage(&ssi_pcb->msg_inbox, toPush);
-    } else {
-        // L'ssi non è in nessuna delle precedenti liste, quindi era bloccato per la receive
-        debug = 0x618;
-        msg_PTR toPush = createMessage(toUnblock, (unsigned int) &payload);
-        if (toPush != NULL) {
-            insertMessage(&ssi_pcb->msg_inbox, toPush);
-            insertProcQ(&ready_queue, ssi_pcb);
-        }
-    }
 }

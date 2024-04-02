@@ -11,7 +11,6 @@ extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 
 extern unsigned int debug;
-extern void klog_print(char *str);
 
 /**
  * Gestisce una richiesta ricevuta da un processo
@@ -177,6 +176,8 @@ static void destroyProcess(pcb_t *p) {
  */
 static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
   int instance;
+  // per sicurezza controlla che non sia in ready queue
+  outProcQ(&ready_queue, toBlock);
   // calcola l'indirizzo base del registro
   memaddr devRegAddr = (memaddr) arg->commandAddr - 0x4;
   switch (devRegAddr) {
