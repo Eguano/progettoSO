@@ -29,9 +29,6 @@ pcb_PTR p2test_pcb;
 // processor0's state at exception time
 state_t *currentState;
 
-// DEBUG: traced region
-unsigned int debug;
-
 static void initialize();
 int isInDevicesLists(pcb_t *p);
 
