@@ -20,6 +20,5 @@ int emptyChild(pcb_t *p);
 void insertChild(pcb_t *prnt, pcb_t *p);
 pcb_t *removeChild(pcb_t *p);
 pcb_t *outChild(pcb_t *p);
-pcb_t *getFirstChild(pcb_t *p);
 
 #endif

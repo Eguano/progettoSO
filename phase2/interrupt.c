@@ -20,75 +20,59 @@ ssi_payload_t payloadDM = {
     .arg = NULL,
 };
 
-extern unsigned int debug;
-
 void interruptHandler() {
-    debug = 0x300;
     
     unsigned int causeReg = getCAUSE();
     // Gli interrupt sono abilitati a livello globale
     if(((currentState->status & IEPON) >> 2) == 1) {
-        debug = 0x301;
 
         for(int line = 0; line < 8; line++) {
             // Se la line e' attiva
             if(intPendingInLine(causeReg, line)) {
-                debug = 0x302;
                 switch(line) {
                     case 0:
                     break;
                     case 1:
-                        debug = 0x303;
                         if(intLineActive(1)) {
-                            debug = 0x304;
                             PLTInterruptHandler();
                         }
                     break;
                     case 2:
-                        debug = 0x305;
                         if(intLineActive(2)) {
-                            debug = 0x306;
                             ITInterruptHandler();
                         }   
                     break;
                     case 5:
                     break;
                     default:
-                        debug = 0x307;
                         // Controllo se la interrupt line corrente e' attiva facendo & e shiftando a sx di 8 + line
                         if(intLineActive(line)) {
-                            debug = 0x308;
 
                             // Punto alla interrupt line corrente usando la interrupt devices bit map
                             unsigned int *intLaneMapped = (memaddr *)(INTDEVBITMAP + (0x4 * (line - 3)));
 
                             for(int dev = 0; dev < 8; dev++) {
                                 if(intPendingOnDev(intLaneMapped, dev)) {
-                                    debug = 0x309;
                                     
                                     pcb_PTR toUnblock;
                                     unsigned int devStatusReg;
 
                                     // Sto trattando un terminal device interrupt   
                                     if(line == 7) {
-                                        debug = 0x310;
                                         toUnblock = termDevInterruptHandler(&devStatusReg, line, dev);
                                     }
                                     // Sto trattando un external device interrupt
                                     else {
-                                        debug = 0x311;
                                         toUnblock = extDevInterruptHandler(&devStatusReg, line, dev);
                                     }
                                     
                                     if(toUnblock == NULL) {
-                                        debug = 0x312;
                                         if(current_process == NULL)
                                             schedule();
                                         else
                                             LDST(currentState);
                                     }
                                     else {
-                                        debug = 0x313;
                                         // decremento processi in attesa
                                         waiting_count--;
                                         // Salvo lo status register su v0 del processo da sbloccare
@@ -135,7 +119,6 @@ unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev
 }
 
 void PLTInterruptHandler() {
-    debug = 0x314;
     copyRegisters(&current_process->p_s, currentState);
     current_process->p_time += TIMESLICE;
     insertProcQ(&ready_queue, current_process);
@@ -144,7 +127,6 @@ void PLTInterruptHandler() {
 }
 
 void ITInterruptHandler() {
-    debug = 0x315;
     LDIT(PSECOND);
     while(!emptyProcQ(&pseudoclock_blocked_list)) {
         pcb_PTR toUnblock = removeProcQ(&pseudoclock_blocked_list);
@@ -158,21 +140,18 @@ void ITInterruptHandler() {
 }
 
 pcb_PTR termDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, unsigned int dev) {
-    debug = 0x316;
     // Prendo il device register
     termreg_t *devReg = (termreg_t *)getDevReg(line, dev);
     unsigned short int selector;
 
     // RICORDARSI CHE STATUS PUO' ANCHE SEGNALARE UN ERRORE
     if((devReg->transm_status & 0xFF) == OKCHARTRANS) {
-        debug = 0x317;
         // Salvo il registro transmitter status
         *devStatusReg = devReg->transm_status;
         devReg->transm_command = ACK;
         selector = 0;
     }
     else if((devReg->recv_status & 0xFF) == OKCHARTRANS) {
-        debug = 0x318;
         // Salvo il registro reciever status
         *devStatusReg = devReg->recv_status;
         devReg->recv_command = ACK;
@@ -185,7 +164,6 @@ pcb_PTR termDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, u
 }
 
 pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, unsigned int dev) {
-    debug = 0x319;
     // Prendo il device register
     dtpreg_t *devReg = (dtpreg_t *)getDevReg(line, dev);
 

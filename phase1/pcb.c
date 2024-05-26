@@ -186,8 +186,11 @@ void insertChild(pcb_t *prnt, pcb_t *p) {
  */
 pcb_t *removeChild(pcb_t *p) {
     if (!list_empty(&p->p_child)){
-        pcb_PTR tempPcb = container_of(p->p_child.next, pcb_t, p_list);
-        list_del(p->p_child.next);
+        // pcb_PTR tempPcb = container_of(p->p_child.next, pcb_t, p_list);
+        pcb_PTR tempPcb = container_of(p->p_child.next, pcb_t, p_sib);
+        tempPcb->p_parent = NULL;
+        // list_del(p->p_child.next);
+        list_del(&tempPcb->p_sib);
         return tempPcb;
     }
     else
@@ -208,14 +211,4 @@ pcb_t *outChild(pcb_t *p) {
     }
     else
         return NULL;
-}
-
-/**
- * Ritorna il primo processo figlio di p
- * 
- * @param p puntatore al processo padre
- * @return puntatore al primo processo figlio
- */
-pcb_t *getFirstChild(pcb_t *p) {
-    return container_of(p->p_child.next, pcb_t, p_list);
 }

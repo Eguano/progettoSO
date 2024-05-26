@@ -10,14 +10,11 @@ extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 
-extern unsigned int debug;
-
 /**
  * Gestisce una richiesta ricevuta da un processo
  */
 void SSIHandler() {
   while (TRUE) {
-    debug = 0x500;
     ssi_payload_PTR p_payload;
     pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
     // risposta da inviare al sender
@@ -27,12 +24,10 @@ void SSIHandler() {
     switch (p_payload->service_code) {
       case CREATEPROCESS:
         // creare un nuovo processo
-        debug = 0x501;
         response = createProcess((ssi_create_process_PTR) p_payload->arg, sender);
         break;
       case TERMPROCESS:
         // eliminare un processo esistente
-        debug = 0x502;
         if (p_payload->arg == NULL) {
           terminateProcess(sender);
         } else {
@@ -41,28 +36,23 @@ void SSIHandler() {
         break;
       case DOIO:
         // eseguire un input o output
-        debug = 0x503;
         blockForDevice((ssi_do_io_PTR) p_payload->arg, sender);
         break;
       case GETTIME:
         // restituire accumulated processor time
-        debug = 0x504;
         response = ((unsigned int) sender->p_time) + (TIMESLICE - getTIMER());
         break;
       case CLOCKWAIT:
         // bloccare il processo per lo pseudoclock
-        debug = 0x505;
         insertProcQ(&pseudoclock_blocked_list, sender);
         waiting_count++;
         break;
       case GETSUPPORTPTR:
         // restituire la struttura di supporto
-        debug = 0x506;
         response = (unsigned int) sender->p_supportStruct;
         break;
       case GETPROCESSID:
         // restituire il pid del sender o del suo genitore
-        debug = 0x507;
         if (((unsigned int) p_payload->arg) == 0) {
           response = sender->p_pid;
         } else {
@@ -75,16 +65,13 @@ void SSIHandler() {
         break;
       case ENDIO:
         // terminazione operazione IO
-        debug = 0x508;
         response = sender->p_s.reg_v0;
         break;
       default:
         // codice non esiste, terminare processo richiedente e tutta la sua progenie
-        debug = 0x509;
         terminateProcess(sender);
         break;
     }
-    debug = 0x510;
     if (p_payload->service_code != DOIO) {
       SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
     }
@@ -128,11 +115,16 @@ void terminateProcess(pcb_t *proc) {
  * 
  * @param p processo di cui eliminare i figli
  */
-static void terminateProgeny(pcb_t *p) {
+void terminateProgeny(pcb_t *p) {
   while (!emptyChild(p)) {
-    terminateProgeny(getFirstChild(p));
-    pcb_PTR removed = removeChild(p);
-    destroyProcess(removed);
+    // Rimuove il primo figlio
+    pcb_t *child = removeChild(p);
+    // Se è stato rimosso con successo, lo elimina ricorsivamente
+    if (child != NULL) {
+      terminateProgeny(child);
+      // Dopo aver eliminato ricorsivamente i figli, distrugge il processo
+      destroyProcess(child);
+    }
   }
 }
 
@@ -141,7 +133,7 @@ static void terminateProgeny(pcb_t *p) {
  * 
  * @param p processo da rimuovere dalle code
  */
-static void destroyProcess(pcb_t *p) {
+void destroyProcess(pcb_t *p) {
   if (!isInPCBFree_h(p)) {
     // lo cerco nella ready queue
     if (outProcQ(&ready_queue, p) == NULL) {
