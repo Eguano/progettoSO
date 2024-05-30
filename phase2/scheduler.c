@@ -9,7 +9,7 @@ extern struct list_head ready_queue;
 
 /**
  * Carica un processo per essere mandato in run, altrimenti blocca l'esecuzione.
- * <p>Salvare lo stato, rimuovere il processo che ha terminato ecc viene svolto dal chiamante
+ * <p>Salvare lo stato, rimuovere il processo precedente ecc viene svolto dal chiamante
  */
 void schedule() {
   // dispatch the next process
@@ -25,9 +25,8 @@ void schedule() {
     HALT();
   } else if (process_count > 0 && waiting_count > 0) {
     // waiting for an interrupt
-    setSTATUS((getSTATUS() | IECON | IMON) & !TEBITON);
+    setSTATUS((IECON | IMON) & !TEBITON);
     WAIT();
-    // interruptHandler();
   } else if (process_count > 0 && waiting_count == 0) {
     // deadlock
     PANIC();

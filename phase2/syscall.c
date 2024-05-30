@@ -10,14 +10,14 @@ extern struct list_head pseudoclock_blocked_list;
 extern pcb_PTR ssi_pcb;
 extern state_t *currentState;
 extern void terminateProcess(pcb_t *proc);
-extern void copyRegisters(state_t *dest, state_t *src);
 extern int isInDevicesLists(pcb_t *p);
+extern void copyRegisters(state_t *dest, state_t *src);
 
 /**
  * Gestisce la richiesta di una system call send o receive
- * 
  */
 void syscallHandler() {
+    // valore mode bit
     int KUp = (currentState->status & USERPON);
 
     switch(currentState->reg_a0) {
@@ -51,9 +51,9 @@ void syscallHandler() {
     }
 }
 
-/*
-    Manda un messaggio ad uno specifico processo destinatario 
-*/
+/**
+ * Manda un messaggio ad uno specifico processo destinatario
+ */
 void sendMessage() {
     pcb_PTR receiver = (pcb_PTR)currentState->reg_a1;
     unsigned int payload = currentState->reg_a2;
@@ -97,9 +97,9 @@ void sendMessage() {
     currentState->pc_epc += WORDLEN;
 }
 
-/*
-    Estrae un messaggio dalla inbox o, se questa è vuota, attende un messaggio
-*/
+/**
+ * Estrae un messaggio dalla inbox o, se questa è vuota, attende un messaggio
+ */
 void receiveMessage() {
     msg_PTR messageExtracted = NULL;
     // colui da cui voglio ricevere
@@ -132,7 +132,7 @@ void receiveMessage() {
 }
 
 /**
- * 
+ * Gestore Trap
  * 
  * @param indexValue 
  */

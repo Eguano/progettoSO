@@ -17,8 +17,7 @@ void uTLB_RefillHandler() {
 }
 
 /**
- * Gestisce tutte gli altri tipi di eccezioni
- * 
+ * Gestisce tutti gli altri tipi di eccezione
  */
 void exceptionHandler() {
     switch((getCAUSE() & GETEXECCODE) >> CAUSESHIFT) {

@@ -11,8 +11,7 @@ extern void test();
 
 /**
  * Entry point del sistema operativo.
- * <p>Inizializza il nucleo, istanzia i processi SSI e test
- * e carica l'Interval Timer
+ * <p>Inizializza il nucleo, istanzia i processi SSI e test, carica l'Interval Timer
  */
 void main() {
   // nucleus initialization
@@ -32,8 +31,7 @@ void main() {
   // istantiate a second process
   p2test_pcb = allocPcb();
   p2test_pcb->p_s.status |= IEPON | IMON | TEBITON;
-  RAMTOP(p2test_pcb->p_s.reg_sp);
-  p2test_pcb->p_s.reg_sp -= (2 * PAGESIZE);
+  p2test_pcb->p_s.reg_sp = ssi_pcb->p_s.reg_sp - (2 * PAGESIZE);
   p2test_pcb->p_s.pc_epc = p2test_pcb->p_s.reg_t9 = (memaddr) test;
   insertProcQ(&ready_queue, p2test_pcb);
   process_count++;
@@ -93,4 +91,50 @@ int isInDevicesLists(pcb_t *p) {
     if (isInList(&terminal_blocked_list[1][i], p)) return TRUE;
   }
   return FALSE;
+}
+
+/**
+ * Copia tutti i registri dello state
+ * 
+ * @param dest stato in cui copiare i valori
+ * @param src stato da cui copiare i valori
+ */
+void copyRegisters(state_t *dest, state_t *src) {
+  dest->cause = src->cause;
+  dest->entry_hi = src->entry_hi;
+  dest->reg_at = src->reg_at;
+  dest->reg_v0 = src->reg_v0;
+  dest->reg_v1 = src->reg_v1;
+  dest->reg_a0 = src->reg_a0;
+  dest->reg_a1 = src->reg_a1;
+  dest->reg_a2 = src->reg_a2;
+  dest->reg_a3 = src->reg_a3;
+  dest->reg_t0 = src->reg_t0;
+  dest->reg_t1 = src->reg_t1;
+  dest->reg_t2 = src->reg_t2;
+  dest->reg_t3 = src->reg_t3;
+  dest->reg_t4 = src->reg_t4;
+  dest->reg_t5 = src->reg_t5;
+  dest->reg_t6 = src->reg_t6;
+  dest->reg_t7 = src->reg_t7;
+  dest->reg_s0 = src->reg_s0;
+  dest->reg_s1 = src->reg_s1;
+  dest->reg_s2 = src->reg_s2;
+  dest->reg_s3 = src->reg_s3;
+  dest->reg_s4 = src->reg_s4;
+  dest->reg_s5 = src->reg_s5;
+  dest->reg_s6 = src->reg_s6;
+  dest->reg_s7 = src->reg_s7;
+  dest->reg_t8 = src->reg_t8;
+  dest->reg_t9 = src->reg_t9;
+  dest->reg_gp = src->reg_gp;
+  dest->reg_sp = src->reg_sp;
+  dest->reg_fp = src->reg_fp;
+  dest->reg_ra = src->reg_ra;
+  dest->reg_HI = src->reg_HI;
+  dest->reg_LO = src->reg_LO;
+  dest->hi = src->hi;
+  dest->lo = src->lo;
+  dest->pc_epc = src->pc_epc;
+  dest->status = src->status;
 }

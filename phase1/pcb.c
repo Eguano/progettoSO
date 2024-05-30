@@ -5,7 +5,7 @@ LIST_HEAD(pcbFree_h);
 static int next_pid = 1;
 
 /**
- * @brief Inserisce tutti i processi nella lista dei processi liberi. (chiamata solo all'inizio dell'eseczuione)
+ * @brief Inserisce tutti i processi nella lista dei processi liberi.
  * 
  */
 void initPcbs() {
@@ -17,7 +17,7 @@ void initPcbs() {
 /**
  * @brief Inserisce il processo puntato da p nella lista dei processi liberi.
  * 
- * @param p 
+ * @param p processo da liberare
  */
 void freePcb(pcb_t *p) {
     list_add_tail(&(p->p_list), &pcbFree_h);
@@ -26,7 +26,7 @@ void freePcb(pcb_t *p) {
 /**
  * @brief Se sono disponibili processi liberi, inizializza i valori di uno e lo rimuove dalla lista dei processi liberi.
  * 
- * @return pcb_t* 
+ * @return pcb_t* processo istanziato
  */
 pcb_t *allocPcb() {
     if(list_empty(&pcbFree_h))
@@ -81,7 +81,7 @@ void insertProcQ(struct list_head *head, pcb_t *p) {
  * @brief Ritorna, senza rimuovere, il primo processo nella process queue. 
  * 
  * @param head sentinella della lista da cui leggere
- * @return pcb_t*
+ * @return pcb_t* processo in testa alla lista
  */
 pcb_t *headProcQ(struct list_head *head) {
     if(emptyProcQ(head))
@@ -94,7 +94,7 @@ pcb_t *headProcQ(struct list_head *head) {
  * @brief Rimuove e ritorna il primo processo nella process queue.
  * 
  * @param head sentinella della lista da cui leggere e rimuovere
- * @return pcb_t* 
+ * @return pcb_t* processo rimosso dalla lista
  */
 pcb_t *removeProcQ(struct list_head *head) {
     if(emptyProcQ(head))
@@ -111,7 +111,7 @@ pcb_t *removeProcQ(struct list_head *head) {
  * 
  * @param head sentinella della lista da cui leggere e rimuovere
  * @param p processo da rimuovere
- * @return pcb_t* 
+ * @return pcb_t* processo rimosso dalla lista
  */
 pcb_t *outProcQ(struct list_head *head, pcb_t *p) {
     pcb_PTR temp;
@@ -160,8 +160,8 @@ int isInList(struct list_head *head, pcb_t *p) {
 /**
  * @brief True se il processo puntato da p non ha figli, false altrimenti.
  * 
- * @param p 
- * @return int 
+ * @param p processo di cui controllare i figli
+ * @return int 1 se non ha figli, 0 altrimenti
  */
 int emptyChild(pcb_t *p) {
     return list_empty(&p->p_child) ? 1 : 0;
@@ -170,8 +170,8 @@ int emptyChild(pcb_t *p) {
 /**
  * @brief Inserisce il processo puntato da p come figlio del processo puntato da prnt.
  * 
- * @param prnt 
- * @param p 
+ * @param prnt processo a cui aggiungere il figlio
+ * @param p processo da aggiungere
  */
 void insertChild(pcb_t *prnt, pcb_t *p) {
     p->p_parent = prnt;
@@ -179,17 +179,15 @@ void insertChild(pcb_t *prnt, pcb_t *p) {
 }
 
 /**
- * @brief Rimuove il primo figlio del processo puntato da p. Ritorna NULL se il processo non ha figli.
+ * @brief Rimuove e ritorna il primo figlio del processo puntato da p.
  * 
- * @param p 
- * @return pcb_t* 
+ * @param p processo a cui rimuovere il figlio
+ * @return pcb_t* figlio rimosso, NULL se il processo p non ha figli
  */
 pcb_t *removeChild(pcb_t *p) {
     if (!list_empty(&p->p_child)){
-        // pcb_PTR tempPcb = container_of(p->p_child.next, pcb_t, p_list);
         pcb_PTR tempPcb = container_of(p->p_child.next, pcb_t, p_sib);
         tempPcb->p_parent = NULL;
-        // list_del(p->p_child.next);
         list_del(&tempPcb->p_sib);
         return tempPcb;
     }
@@ -198,10 +196,10 @@ pcb_t *removeChild(pcb_t *p) {
 }
 
 /**
- * @brief Rimuove il processo puntato da p dalla lista dei figli del processo padre. Ritorna NULL se il processo non ha un padre.
+ * @brief Rimuove il processo puntato da p dai figli del processo padre.
  * 
- * @param p 
- * @return pcb_t* 
+ * @param p processo da "staccare" dal padre
+ * @return pcb_t* processo rimosso, NULL se il processo non ha un padre
  */
 pcb_t *outChild(pcb_t *p) {
     if (p->p_parent != NULL){

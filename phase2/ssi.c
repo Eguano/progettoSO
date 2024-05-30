@@ -9,6 +9,7 @@ extern struct list_head ready_queue;
 extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
+extern void copyRegisters(state_t *dest, state_t *src);
 
 /**
  * Gestisce una richiesta ricevuta da un processo
@@ -64,7 +65,7 @@ void SSIHandler() {
         }
         break;
       case ENDIO:
-        // terminazione operazione IO
+        // terminare operazione IO
         response = sender->p_s.reg_v0;
         break;
       default:
@@ -102,12 +103,12 @@ static unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
 /**
  * Elimina un processo e tutta la sua progenie
  * 
- * @param proc processo da eliminare
+ * @param p processo da eliminare
  */
-void terminateProcess(pcb_t *proc) {
-  outChild(proc);
-  if (!emptyChild(proc)) terminateProgeny(proc);
-  destroyProcess(proc);
+void terminateProcess(pcb_t *p) {
+  outChild(p);
+  terminateProgeny(p);
+  destroyProcess(p);
 }
 
 /**
@@ -117,12 +118,12 @@ void terminateProcess(pcb_t *proc) {
  */
 void terminateProgeny(pcb_t *p) {
   while (!emptyChild(p)) {
-    // Rimuove il primo figlio
+    // rimuove il primo figlio
     pcb_t *child = removeChild(p);
-    // Se è stato rimosso con successo, lo elimina ricorsivamente
+    // se è stato rimosso con successo, elimina ricorsivamente i suoi figli
     if (child != NULL) {
       terminateProgeny(child);
-      // Dopo aver eliminato ricorsivamente i figli, distrugge il processo
+      // dopo aver eliminato i figli, distrugge il processo
       destroyProcess(child);
     }
   }
@@ -214,50 +215,4 @@ static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
   }
   waiting_count++;
   *arg->commandAddr = arg->commandValue;
-}
-
-/**
- * Copia tutti i registri dello state
- * 
- * @param dest stato in cui copiare i valori
- * @param src stato da cui copiare i valori
- */
-void copyRegisters(state_t *dest, state_t *src) {
-  dest->cause = src->cause;
-  dest->entry_hi = src->entry_hi;
-  dest->reg_at = src->reg_at;
-  dest->reg_v0 = src->reg_v0;
-  dest->reg_v1 = src->reg_v1;
-  dest->reg_a0 = src->reg_a0;
-  dest->reg_a1 = src->reg_a1;
-  dest->reg_a2 = src->reg_a2;
-  dest->reg_a3 = src->reg_a3;
-  dest->reg_t0 = src->reg_t0;
-  dest->reg_t1 = src->reg_t1;
-  dest->reg_t2 = src->reg_t2;
-  dest->reg_t3 = src->reg_t3;
-  dest->reg_t4 = src->reg_t4;
-  dest->reg_t5 = src->reg_t5;
-  dest->reg_t6 = src->reg_t6;
-  dest->reg_t7 = src->reg_t7;
-  dest->reg_s0 = src->reg_s0;
-  dest->reg_s1 = src->reg_s1;
-  dest->reg_s2 = src->reg_s2;
-  dest->reg_s3 = src->reg_s3;
-  dest->reg_s4 = src->reg_s4;
-  dest->reg_s5 = src->reg_s5;
-  dest->reg_s6 = src->reg_s6;
-  dest->reg_s7 = src->reg_s7;
-  dest->reg_t8 = src->reg_t8;
-  dest->reg_t9 = src->reg_t9;
-  dest->reg_gp = src->reg_gp;
-  dest->reg_sp = src->reg_sp;
-  dest->reg_fp = src->reg_fp;
-  dest->reg_ra = src->reg_ra;
-  dest->reg_HI = src->reg_HI;
-  dest->reg_LO = src->reg_LO;
-  dest->hi = src->hi;
-  dest->lo = src->lo;
-  dest->pc_epc = src->pc_epc;
-  dest->status = src->status;
 }

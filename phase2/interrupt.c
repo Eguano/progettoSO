@@ -13,15 +13,18 @@ extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern pcb_PTR ssi_pcb;
 extern state_t *currentState;
 extern void copyRegisters(state_t *dest, state_t *src);
+extern msg_PTR createMessage(pcb_PTR sender, unsigned int payload);
 
-msg_PTR createMessage(pcb_PTR sender, unsigned int payload);
+// payload for direct message to SSI
 ssi_payload_t payloadDM = {
     .service_code = ENDIO,
     .arg = NULL,
 };
 
+/**
+ * Gestisce tutti i tipi di interrupt
+ */
 void interruptHandler() {
-    
     unsigned int causeReg = getCAUSE();
     // Gli interrupt sono abilitati a livello globale
     if(((currentState->status & IEPON) >> 2) == 1) {
@@ -34,11 +37,13 @@ void interruptHandler() {
                     break;
                     case 1:
                         if(intLineActive(1)) {
+                            // scaduto il timeslice del running process
                             PLTInterruptHandler();
                         }
                     break;
                     case 2:
                         if(intLineActive(2)) {
+                            // scattato lo pseudoclock (interval timer)
                             ITInterruptHandler();
                         }   
                     break;
@@ -66,32 +71,27 @@ void interruptHandler() {
                                         toUnblock = extDevInterruptHandler(&devStatusReg, line, dev);
                                     }
                                     
-                                    if(toUnblock == NULL) {
-                                        if(current_process == NULL)
-                                            schedule();
-                                        else
-                                            LDST(currentState);
-                                    }
-                                    else {
-                                        // decremento processi in attesa
+                                    // controllo se c'è un processo da sbloccare
+                                    if(toUnblock != NULL) {
                                         waiting_count--;
                                         // Salvo lo status register su v0 del processo da sbloccare
                                         toUnblock->p_s.reg_v0 = devStatusReg;
 
+                                        // mando un messaggio diretto al ssi per sbloccare il processo
                                         msg_PTR toPush = createMessage(toUnblock, (unsigned int) &payloadDM);
                                         if (toPush != NULL) {
                                             insertMessage(&ssi_pcb->msg_inbox, toPush);
-                                            // controlla se l'ssi è in esecuzione o in readyQueue
+                                            // controllo se l'ssi è in esecuzione o in readyQueue
                                             if (ssi_pcb != current_process && !isInList(&ready_queue, ssi_pcb)) {
                                                 insertProcQ(&ready_queue, ssi_pcb);
                                             }
                                         } 
-
-                                        if(current_process == NULL)
-                                            schedule();
-                                        else
-                                            LDST(currentState);
                                     }
+
+                                    if(current_process == NULL)
+                                        schedule();
+                                    else
+                                        LDST(currentState);
                                 }
                             }
                         }
@@ -102,22 +102,52 @@ void interruptHandler() {
     }
 }
 
+/**
+ * 
+ * 
+ * @param intLine 
+ * @param devIntLine 
+ * @return 
+ */
 memaddr *getDevReg(unsigned int intLine, unsigned int devIntLine) {
     return (memaddr *)(START_DEVREG + ((intLine - 3)* 0x80) + (devIntLine * 0x10));
 }
 
+/**
+ * 
+ * 
+ * @param line 
+ * @return 
+ */
 unsigned short int intLineActive(unsigned short int line) {
     return (((currentState->status & IMON) >> (8 + line)) & 0x1) == 1; 
 }
 
+/**
+ * 
+ * 
+ * @param causeReg 
+ * @param line 
+ * @return 
+ */
 unsigned short int intPendingInLine(unsigned int causeReg, unsigned short int line) {
     return (((causeReg & interruptConsts[line]) >> (8 + line))) == 1;
 }
 
+/**
+ * 
+ * 
+ * @param intLaneMapped 
+ * @param dev 
+ * @return 
+ */
 unsigned short int intPendingOnDev(unsigned int *intLaneMapped, unsigned int dev) {
     return (((*intLaneMapped) & deviceConsts[dev]) >> dev) == 1;
 }
 
+/**
+ * Gestisce l'interrupt dovuto alla scadenza del timeslice
+ */
 void PLTInterruptHandler() {
     copyRegisters(&current_process->p_s, currentState);
     current_process->p_time += TIMESLICE;
@@ -126,8 +156,12 @@ void PLTInterruptHandler() {
     schedule();
 }
 
+/**
+ * Gestisce l'interrupt generato dall'Interval Timer
+ */
 void ITInterruptHandler() {
     LDIT(PSECOND);
+    // svuoto la lista dei processi in attesa dello psudoclock riattivandoli
     while(!emptyProcQ(&pseudoclock_blocked_list)) {
         pcb_PTR toUnblock = removeProcQ(&pseudoclock_blocked_list);
         waiting_count--;
@@ -139,6 +173,14 @@ void ITInterruptHandler() {
         LDST(currentState);
 }
 
+/**
+ * Gestisce l'interrupt generato da un terminal device (sia transm che recv)
+ * 
+ * @param devStatusReg 
+ * @param line 
+ * @param dev 
+ * @return processo da sbloccare
+ */
 pcb_PTR termDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, unsigned int dev) {
     // Prendo il device register
     termreg_t *devReg = (termreg_t *)getDevReg(line, dev);
@@ -152,17 +194,25 @@ pcb_PTR termDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, u
         selector = 0;
     }
     else if((devReg->recv_status & 0xFF) == OKCHARTRANS) {
-        // Salvo il registro reciever status
+        // Salvo il registro receiver status
         *devStatusReg = devReg->recv_status;
         devReg->recv_command = ACK;
         selector = 1;
     }
 
-    // Uso selector per determinare se devo andare a prendere da un transmitter o un reciever
+    // Uso selector per determinare se devo andare a prendere da un transmitter o un receiver
     return removeProcQ(&terminal_blocked_list[selector][dev]);    
 
 }
 
+/**
+ * Gestisce l'interrupt generato da un external device
+ * 
+ * @param devStatusReg 
+ * @param line 
+ * @param dev 
+ * @return processo da sbloccare
+ */
 pcb_PTR extDevInterruptHandler(unsigned int *devStatusReg, unsigned int line, unsigned int dev) {
     // Prendo il device register
     dtpreg_t *devReg = (dtpreg_t *)getDevReg(line, dev);
