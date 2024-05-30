@@ -103,7 +103,7 @@ void interruptHandler() {
 }
 
 /**
- * 
+ * Data l'interrupt line e la device interrupt line, calcola l'indirizzo base del device register.
  * 
  * @param intLine 
  * @param devIntLine 
@@ -114,7 +114,7 @@ memaddr *getDevReg(unsigned int intLine, unsigned int devIntLine) {
 }
 
 /**
- * 
+ * Controlla se una specifica interrupt line e' attiva o mascherata.
  * 
  * @param line 
  * @return 
@@ -124,7 +124,7 @@ unsigned short int intLineActive(unsigned short int line) {
 }
 
 /**
- * 
+ * Controlla se in una determinata interrupt line e' presente un interrupt.
  * 
  * @param causeReg 
  * @param line 
@@ -135,7 +135,7 @@ unsigned short int intPendingInLine(unsigned int causeReg, unsigned short int li
 }
 
 /**
- * 
+ * Dato un device, controlla se esso ha alzato o meno un interrupt.
  * 
  * @param intLaneMapped 
  * @param dev 
