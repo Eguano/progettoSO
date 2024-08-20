@@ -3,6 +3,7 @@
 #include "syscall.h"
 
 extern state_t *currentState;
+extern pcb_PTR current_process;
 extern void interruptHandler();
 
 /**
@@ -10,10 +11,12 @@ extern void interruptHandler();
  * virtuale che non ha un corrispettivo nella TLB
  */
 void uTLB_RefillHandler() {
-    setENTRYHI(0x80000000);
-    setENTRYLO(0x00000000);
+    unsigned int p = currentState->entry_hi;
+    pteEntry_t pte = current_process->p_supportStruct->sup_privatePgTbl[p];
+    setENTRYHI(pte.pte_entryHI);
+    setENTRYLO(pte.pte_entryLO);
     TLBWR();
-    LDST((state_t*) 0x0FFFF000);
+    LDST(currentState);
 }
 
 /**
@@ -27,7 +30,8 @@ void exceptionHandler() {
             break;
         case 1 ... 3:
             // TLB Exception
-            passUpOrDie(PGFAULTEXCEPT);
+            uTLB_RefillHandler();
+            // passUpOrDie(PGFAULTEXCEPT);
             break;
         case 4 ... 7:
             // Program Traps p1: Address and Bus Error Exception

@@ -14,6 +14,18 @@
 typedef signed int cpu_t;
 typedef unsigned int memaddr;
 
+/* Swap pool entry descriptor */
+typedef struct swpoEntry_t {
+    unsigned int swpo_asid;     /* UProc ASID */
+    unsigned int swpo_page;     /* Logical page number (VPN) */
+    pteEntry_t *swpo_pte_ptr;   /* Ptr to matching page table entry belonging to owner process */
+} swpoEntry_t;
+
+/* Swap pool descriptor */
+typedef struct swpo_t {
+    swpoEntry_t swpo_frames[POOLSIZE];
+} swpo_t;
+
 /* Page Table Entry descriptor */
 typedef struct pteEntry_t {
     unsigned int pte_entryHI;
