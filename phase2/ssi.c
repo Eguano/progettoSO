@@ -9,16 +9,13 @@ extern struct list_head ready_queue;
 extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
-
-extern unsigned int debug;
-extern void klog_print(char *str);
+extern void copyRegisters(state_t *dest, state_t *src);
 
 /**
  * Gestisce una richiesta ricevuta da un processo
  */
 void SSIHandler() {
   while (TRUE) {
-    debug = 0x500;
     ssi_payload_PTR p_payload;
     pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
     // risposta da inviare al sender
@@ -28,12 +25,10 @@ void SSIHandler() {
     switch (p_payload->service_code) {
       case CREATEPROCESS:
         // creare un nuovo processo
-        debug = 0x501;
         response = createProcess((ssi_create_process_PTR) p_payload->arg, sender);
         break;
       case TERMPROCESS:
         // eliminare un processo esistente
-        debug = 0x502;
         if (p_payload->arg == NULL) {
           terminateProcess(sender);
         } else {
@@ -42,28 +37,23 @@ void SSIHandler() {
         break;
       case DOIO:
         // eseguire un input o output
-        debug = 0x503;
         blockForDevice((ssi_do_io_PTR) p_payload->arg, sender);
         break;
       case GETTIME:
         // restituire accumulated processor time
-        debug = 0x504;
         response = ((unsigned int) sender->p_time) + (TIMESLICE - getTIMER());
         break;
       case CLOCKWAIT:
         // bloccare il processo per lo pseudoclock
-        debug = 0x505;
         insertProcQ(&pseudoclock_blocked_list, sender);
         waiting_count++;
         break;
       case GETSUPPORTPTR:
         // restituire la struttura di supporto
-        debug = 0x506;
         response = (unsigned int) sender->p_supportStruct;
         break;
       case GETPROCESSID:
         // restituire il pid del sender o del suo genitore
-        debug = 0x507;
         if (((unsigned int) p_payload->arg) == 0) {
           response = sender->p_pid;
         } else {
@@ -75,17 +65,14 @@ void SSIHandler() {
         }
         break;
       case ENDIO:
-        // terminazione operazione IO
-        debug = 0x508;
+        // terminare operazione IO
         response = sender->p_s.reg_v0;
         break;
       default:
         // codice non esiste, terminare processo richiedente e tutta la sua progenie
-        debug = 0x509;
         terminateProcess(sender);
         break;
     }
-    debug = 0x510;
     if (p_payload->service_code != DOIO) {
       SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
     }
@@ -116,12 +103,12 @@ static unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender) {
 /**
  * Elimina un processo e tutta la sua progenie
  * 
- * @param proc processo da eliminare
+ * @param p processo da eliminare
  */
-void terminateProcess(pcb_t *proc) {
-  outChild(proc);
-  if (!emptyChild(proc)) terminateProgeny(proc);
-  destroyProcess(proc);
+void terminateProcess(pcb_t *p) {
+  outChild(p);
+  terminateProgeny(p);
+  destroyProcess(p);
 }
 
 /**
@@ -129,11 +116,16 @@ void terminateProcess(pcb_t *proc) {
  * 
  * @param p processo di cui eliminare i figli
  */
-static void terminateProgeny(pcb_t *p) {
+void terminateProgeny(pcb_t *p) {
   while (!emptyChild(p)) {
-    terminateProgeny(getFirstChild(p));
-    pcb_PTR removed = removeChild(p);
-    destroyProcess(removed);
+    // rimuove il primo figlio
+    pcb_t *child = removeChild(p);
+    // se è stato rimosso con successo, elimina ricorsivamente i suoi figli
+    if (child != NULL) {
+      terminateProgeny(child);
+      // dopo aver eliminato i figli, distrugge il processo
+      destroyProcess(child);
+    }
   }
 }
 
@@ -142,7 +134,7 @@ static void terminateProgeny(pcb_t *p) {
  * 
  * @param p processo da rimuovere dalle code
  */
-static void destroyProcess(pcb_t *p) {
+void destroyProcess(pcb_t *p) {
   if (!isInPCBFree_h(p)) {
     // lo cerco nella ready queue
     if (outProcQ(&ready_queue, p) == NULL) {
@@ -177,6 +169,8 @@ static void destroyProcess(pcb_t *p) {
  */
 static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
   int instance;
+  // per sicurezza controlla che non sia in ready queue
+  outProcQ(&ready_queue, toBlock);
   // calcola l'indirizzo base del registro
   memaddr devRegAddr = (memaddr) arg->commandAddr - 0x4;
   switch (devRegAddr) {
@@ -221,50 +215,4 @@ static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
   }
   waiting_count++;
   *arg->commandAddr = arg->commandValue;
-}
-
-/**
- * Copia tutti i registri dello state
- * 
- * @param dest stato in cui copiare i valori
- * @param src stato da cui copiare i valori
- */
-void copyRegisters(state_t *dest, state_t *src) {
-  dest->cause = src->cause;
-  dest->entry_hi = src->entry_hi;
-  dest->reg_at = src->reg_at;
-  dest->reg_v0 = src->reg_v0;
-  dest->reg_v1 = src->reg_v1;
-  dest->reg_a0 = src->reg_a0;
-  dest->reg_a1 = src->reg_a1;
-  dest->reg_a2 = src->reg_a2;
-  dest->reg_a3 = src->reg_a3;
-  dest->reg_t0 = src->reg_t0;
-  dest->reg_t1 = src->reg_t1;
-  dest->reg_t2 = src->reg_t2;
-  dest->reg_t3 = src->reg_t3;
-  dest->reg_t4 = src->reg_t4;
-  dest->reg_t5 = src->reg_t5;
-  dest->reg_t6 = src->reg_t6;
-  dest->reg_t7 = src->reg_t7;
-  dest->reg_s0 = src->reg_s0;
-  dest->reg_s1 = src->reg_s1;
-  dest->reg_s2 = src->reg_s2;
-  dest->reg_s3 = src->reg_s3;
-  dest->reg_s4 = src->reg_s4;
-  dest->reg_s5 = src->reg_s5;
-  dest->reg_s6 = src->reg_s6;
-  dest->reg_s7 = src->reg_s7;
-  dest->reg_t8 = src->reg_t8;
-  dest->reg_t9 = src->reg_t9;
-  dest->reg_gp = src->reg_gp;
-  dest->reg_sp = src->reg_sp;
-  dest->reg_fp = src->reg_fp;
-  dest->reg_ra = src->reg_ra;
-  dest->reg_HI = src->reg_HI;
-  dest->reg_LO = src->reg_LO;
-  dest->hi = src->hi;
-  dest->lo = src->lo;
-  dest->pc_epc = src->pc_epc;
-  dest->status = src->status;
 }
