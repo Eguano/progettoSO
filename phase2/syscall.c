@@ -18,36 +18,26 @@ extern void copyRegisters(state_t *dest, state_t *src);
  */
 void syscallHandler() {
     // valore mode bit
-    int KUp = (currentState->status & USERPON);
-
-    switch(currentState->reg_a0) {
-        case SENDMESSAGE:
-            if(KUp) {
-                // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
-                currentState->cause &= CLEAREXECCODE;
-                currentState->cause |= (PRIVINSTR << CAUSESHIFT);
-                passUpOrDie(GENERALEXCEPT);
-            } else {
-                // Se kernel mode allora invoca il metodo
+    if (currentState->status & USERPON) {
+        // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
+        currentState->cause &= CLEAREXECCODE;
+        currentState->cause |= (PRIVINSTR << CAUSESHIFT);
+        passUpOrDie(GENERALEXCEPT);
+    } else {
+        // Se kernel mode allora invoca il metodo
+        switch(currentState->reg_a0) {
+            case SENDMESSAGE:
                 sendMessage();
                 LDST(currentState);
-            }
-            break;
-        case RECEIVEMESSAGE:
-            if(KUp) {
-                // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
-                currentState->cause &= CLEAREXECCODE;
-                currentState->cause |= (PRIVINSTR << CAUSESHIFT);
-                passUpOrDie(GENERALEXCEPT);
-            } else {
-                // Se kernel mode allora invoca il metodo
+                break;
+            case RECEIVEMESSAGE:
                 receiveMessage();
                 LDST(currentState);
-            }
-            break;
-        default:
-            passUpOrDie(GENERALEXCEPT);
-            break;  
+                break;
+            default:
+                passUpOrDie(GENERALEXCEPT);
+                break;  
+        }
     }
 }
 

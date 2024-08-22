@@ -41,7 +41,7 @@ void SSIHandler() {
         break;
       case GETTIME:
         // restituire accumulated processor time
-        response = ((unsigned int) sender->p_time) + (TIMESLICE - getTIMER());
+        response = (unsigned int) sender->p_time;
         break;
       case CLOCKWAIT:
         // bloccare il processo per lo pseudoclock
