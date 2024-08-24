@@ -35,7 +35,7 @@ all : kernel.core.umps
 kernel.core.umps : kernel
 	umps3-elf2umps -k $<
 
-kernel : ./phase3/initProc.o ./phase3/sst.o ./phase3/sysSupport.o ./phase3/vmSupport.o ./phase2/init.o ./phase2/exceptions.o ./phase2/interrupt.o ./phase2/scheduler.o ./phase2/ssi.o ./phase2/syscall.o ./phase1/msg.o ./phase1/pcb.o crtso.o libumps.o
+kernel : ./phase2/p2test.o ./phase3/initProc.o ./phase3/sst.o ./phase3/sysSupport.o ./phase3/vmSupport.o ./phase2/init.o ./phase2/exceptions.o ./phase2/interrupt.o ./phase2/scheduler.o ./phase2/ssi.o ./phase2/syscall.o ./phase1/msg.o ./phase1/pcb.o crtso.o libumps.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
 clean :

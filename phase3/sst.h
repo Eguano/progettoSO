@@ -11,6 +11,9 @@
 
 support_t *getSupport();
 void SSTInitialize(state_t *s);
-void SSTHandler();
+void SSTHandler(int asid);
+void terminate();
+void writePrinter(int asid, sst_print_PTR arg);
+void writeTerminal(int asid, sst_print_PTR arg);
 
 #endif

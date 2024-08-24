@@ -41,15 +41,17 @@ void SSTInitialize(state_t *s) {
   SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
   SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &p, 0);
 
-  SSTHandler();
+  SSTHandler(sup->sup_asid);
 }
 
 /**
  * Gestisce una richiesta ricevuta da un processo utente
+ * 
+ * @param asid asid dell'U-proc figlio dell'SST
  */
-void SSTHandler() {
+void SSTHandler(int asid) {
   while (TRUE) {
-    ssi_payload_PTR p_payload;
+    ssi_payload_PTR p_payload = NULL;
     pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) p_payload, 0);
     // risposta da inviare all'U-proc
     unsigned int response = 0;
@@ -62,26 +64,18 @@ void SSTHandler() {
         break;
       case TERMINATE:
         // terminare SST e di conseguenza l'U-proc
-        // comunica al test la terminazione
-        SYSCALL(SENDMESSAGE, (unsigned int) test_pcb, 0, 0);
-        // vera terminazione
-        ssi_payload_t termPayload = {
-          .service_code = TERMPROCESS,
-          .arg = NULL,
-        };
-        SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &termPayload, 0);
-        SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, 0, 0);
+        terminate();
         break;
       case WRITEPRINTER:
         // scrivere una stringa su una printer
-        write(((sst_print_PTR) p_payload->arg)->string);
+        writePrinter(asid, (sst_print_PTR) p_payload->arg);
         break;
       case WRITETERMINAL:
         // scrivere una stringa su un terminal
-        write(((sst_print_PTR) p_payload->arg)->string);
+        writeTerminal(asid, (sst_print_PTR) p_payload->arg);
         break;
       default:
-        // errore?
+        // errore
         break;
     }
 
@@ -89,26 +83,89 @@ void SSTHandler() {
   }
 }
 
-void write(char* s) {
-  // TODO: individuare device su cui scrivere
-  unsigned int *base = (unsigned int *)(0x10000254);
-  unsigned int *command = base + 3;
+/**
+ * Termina il processo corrente
+ */
+void terminate() {
+  // TODO: se l'U-proc occupa un frame è da liberare
+  // comunica al test la terminazione
+  SYSCALL(SENDMESSAGE, (unsigned int) test_pcb, 0, 0);
+  // vera terminazione
+  ssi_payload_t termPayload = {
+    .service_code = TERMPROCESS,
+    .arg = NULL,
+  };
+  SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &termPayload, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, 0, 0);
+}
+
+/**
+ * Scrive una stringa di caratteri su una printer
+ * 
+ * @param asid asid del processo che richiede la stampa
+ * @param arg payload con stringa da stampare e lunghezza
+ */
+void writePrinter(int asid, sst_print_PTR arg) {
+  // individua l'istanza di printer su cui scrivere
+  unsigned int *base = (unsigned int *) PRINTER0ADDR + 4*(asid - 1);
+  unsigned int *command = base + 0x4;
+  unsigned int *data0 = base + 0x8;
   unsigned int status;
+  // stringa da printare
+  char *s = arg->string;
 
   while (*s != EOS) {
-    unsigned int value = PRINTCHR | (((unsigned int)*s) << 8);
-    ssi_do_io_t do_io = {
+    unsigned int value = PRINTCHR;
+    *data0 = (unsigned int) *s;
+    ssi_do_io_t doIO = {
       .commandAddr = command,
       .commandValue = value,
     };
-    ssi_payload_t payload = {
+    ssi_payload_t ioPayload = {
       .service_code = DOIO,
-      .arg = &do_io,
+      .arg = &doIO,
     };
-    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&payload), 0);
+    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&ioPayload), 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&status), 0);
 
-    if ((status & 0xFF) != RECVD) {
+    // verifica la correttezza dell'operazione
+    if (status != READY) {
+      PANIC();
+    }
+
+    s++;
+  }
+}
+
+/**
+ * Scrive una stringa di caratteri su un terminal
+ * 
+ * @param asid asid del processo che richiede la stampa
+ * @param arg payload con stringa da stampare e lunghezza
+ */
+void writeTerminal(int asid, sst_print_PTR arg) {
+  // individua l'istanza di terminal su cui scrivere
+  unsigned int *base = (unsigned int *) TERM0ADDR + 4*(asid - 1);
+  unsigned int *command = base + 0xc;
+  unsigned int status;
+  // stringa da printare
+  char *s = arg->string;
+
+  while (*s != EOS) {
+    unsigned int value = PRINTCHR | (((unsigned int) *s) << 8);
+    ssi_do_io_t doIO = {
+      .commandAddr = command,
+      .commandValue = value,
+    };
+    ssi_payload_t ioPayload = {
+      .service_code = DOIO,
+      .arg = &doIO,
+    };
+    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&ioPayload), 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&status), 0);
+
+    // controlla la correttezza dell'operazione
+    if ((status & TERMSTATMASK) != RECVD) {
       PANIC();
     }
 

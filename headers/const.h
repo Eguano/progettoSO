@@ -216,5 +216,13 @@
 // boolean values
 #define TRUE 1
 #define FALSE 0
+// base address del terminal 0
+#define TERM0ADDR 0x10000254
+// base address della printer 0
+#define PRINTER0ADDR 0x100001D4
+// per controllare status del terminal
+#define TERMSTATMASK 0xFF
+// status della printer
+#define READY 1
 
 #endif
