@@ -189,24 +189,26 @@ static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
       instance = (devRegAddr - 0x10000154) / 0x00000010;
       insertProcQ(&external_blocked_list[2][instance], toBlock);
       break;
-    case 0x100001D4 ... 0x10000244:
+    case PRINTER0ADDR ... 0x10000244:
       // printer
-      instance = (devRegAddr - 0x100001D4) / 0x00000010;
+      instance = (devRegAddr - PRINTER0ADDR) / 0x00000010;
       insertProcQ(&external_blocked_list[3][instance], toBlock);
       break;
-    case 0x10000254 ... 0x100002C4:
-      // terminal
-      // TODO: per ora si usa solo il terminale 0 quindi rimando i controlli sulla instance a più avanti
-      if (devRegAddr == 0x10000254 || devRegAddr == 0x10000264 || devRegAddr == 0x10000274
-      || devRegAddr == 0x10000284 || devRegAddr == 0x10000294  || devRegAddr == 0x100002A4
-      || devRegAddr == 0x100002B4 || devRegAddr == 0x100002C4) {
-        // receiver
-        instance = 0;
-        insertProcQ(&terminal_blocked_list[1][instance], toBlock);
-      } else {
-        // transmitter
-        instance = 0;
-        insertProcQ(&terminal_blocked_list[0][instance], toBlock);
+    case TERM0ADDR ... 0x100002C4:
+      int found = FALSE;
+      // terminal receiver
+      for (int i = 0; i < MAXDEV && found == FALSE; i++) {
+        if (devRegAddr == TERM0ADDR + 0x00000010*i) {
+          insertProcQ(&terminal_blocked_list[1][i], toBlock);
+          found = TRUE;
+        }
+      }
+      // terminal transmitter
+      for (int i = 0; i < MAXDEV && found == FALSE; i++) {
+        if (devRegAddr == TERM0ADDR + 0x8 + 0x00000010*i) {
+          insertProcQ(&terminal_blocked_list[0][i], toBlock);
+          found = TRUE;
+        }
       }
       break;
     default:
