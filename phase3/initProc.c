@@ -3,6 +3,7 @@
 extern pcb_PTR current_process;
 extern pcb_PTR ssi_pcb;
 extern void SSTInitialize();
+extern void supportExceptionHandler();
 
 /**
  * Funzione di test per la fase 3
@@ -68,8 +69,7 @@ void initSST() {
     addr -= PAGESIZE;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
-    // TODO: aggiungere indirizzo funzione di gestione eccezioni
-    // supports[asid - 1].sup_exceptContext[GENERALEXCEPT].pc = (memaddr) generalExceptionHandler;
+    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].pc = (memaddr) supportExceptionHandler;
     addr -= PAGESIZE;
     for (int i = 0; i < USERPGTBLSIZE; i++) {
       // TODO: inizializzare una singola entry della tabella delle pagine

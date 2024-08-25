@@ -53,7 +53,7 @@ void SSTInitialize() {
 void SSTHandler(int asid) {
   while (TRUE) {
     ssi_payload_PTR p_payload = NULL;
-    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) p_payload, 0);
+    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
     // risposta da inviare all'U-proc
     unsigned int response = 0;
 
@@ -126,8 +126,8 @@ void writePrinter(int asid, sst_print_PTR arg) {
       .service_code = DOIO,
       .arg = &doIO,
     };
-    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&ioPayload), 0);
-    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&status), 0);
+    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int) &ioPayload, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int) &status, 0);
 
     // verifica la correttezza dell'operazione
     if (status != READY) {
@@ -162,8 +162,8 @@ void writeTerminal(int asid, sst_print_PTR arg) {
       .service_code = DOIO,
       .arg = &doIO,
     };
-    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&ioPayload), 0);
-    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&status), 0);
+    SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int) &ioPayload, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int) &status, 0);
 
     // controlla la correttezza dell'operazione
     if ((status & TERMSTATMASK) != RECVD) {
