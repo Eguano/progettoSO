@@ -9,4 +9,7 @@
 #include "../headers/const.h"
 #include "../headers/types.h"
 
+pcb_PTR mutexHolderProcess;
+pcb_PTR swapMutexProcess;
+
 #endif

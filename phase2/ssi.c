@@ -194,7 +194,7 @@ static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
       instance = (devRegAddr - PRINTER0ADDR) / 0x00000010;
       insertProcQ(&external_blocked_list[3][instance], toBlock);
       break;
-    case TERM0ADDR ... 0x100002C4:
+    case TERM0ADDR ... 0x100002C4:;
       int found = FALSE;
       // terminal receiver
       for (int i = 0; i < MAXDEV && found == FALSE; i++) {
