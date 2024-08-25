@@ -2,6 +2,7 @@
 
 extern pcb_PTR test_pcb;
 extern pcb_PTR ssi_pcb;
+extern state_t uprocStates[UPROCMAX];
 
 /**
  * Richiede all'SSI la struttura di supporto del processo SST
@@ -24,14 +25,14 @@ support_t *getSupport() {
  * 
  * @param s puntatore allo state dell'U-proc da creare
  */
-void SSTInitialize(state_t *s) {
+void SSTInitialize() {
   // child initialization
   // richiede la struttura di supporto
   support_t *sup = getSupport();
   // crea U-proc figlio
   pcb_PTR p;
   ssi_create_process_t createProcess = {
-    .state = s,
+    .state = &uprocStates[sup->sup_asid - 1],
     .support = sup,
   };
   ssi_payload_t payload = {
@@ -87,7 +88,7 @@ void SSTHandler(int asid) {
  * Termina il processo corrente
  */
 void terminate() {
-  // TODO: se l'U-proc occupa un frame è da liberare
+  // TODO: se l'U-proc occupa dei frame sono da liberare
   // comunica al test la terminazione
   SYSCALL(SENDMESSAGE, (unsigned int) test_pcb, 0, 0);
   // vera terminazione

@@ -10,7 +10,7 @@
 #include "../headers/types.h"
 
 support_t *getSupport();
-void SSTInitialize(state_t *s);
+void SSTInitialize();
 void SSTHandler(int asid);
 void terminate();
 void writePrinter(int asid, sst_print_PTR arg);
