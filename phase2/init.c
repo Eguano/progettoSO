@@ -56,9 +56,6 @@ static void initialize() {
   initPcbs();
   initMsgs();
 
-  // swap pool
-  initSwapPool();
-
   // initialize variables
   process_count = 0;
   waiting_count = 0;
@@ -76,15 +73,6 @@ static void initialize() {
   }
   mkEmptyProcQ(&pseudoclock_blocked_list);
   currentState = (state_t *)BIOSDATAPAGE;
-}
-
-void initSwapPool() {
-  swap_pool = (swpo_t *) FRAMEPOOLSTART;
-  for (int i = 0; i < POOLSIZE; i++) {
-    swap_pool->swpo_frames[i].swpo_asid = -1;
-    swap_pool->swpo_frames[i].swpo_page = -1;
-    swap_pool->swpo_frames[i].swpo_pte_ptr = NULL;
-  }
 }
 
 /**

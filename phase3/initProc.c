@@ -16,6 +16,9 @@ void test() {
 
   /* TODO: Initialize the Level 4/Phase 3 data structures.
   (The Swap Pool table) */
+  // swap pool
+  initSwapPool();
+
   initSwapMutex();
 
   initUprocState();
@@ -74,7 +77,8 @@ void initSST() {
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].pc = (memaddr) supportExceptionHandler;
     addr -= PAGESIZE;
     for (int i = 0; i < USERPGTBLSIZE; i++) {
-      // TODO: inizializzare una singola entry della tabella delle pagine
+      // TODO: inizializzare le singole entry della tabella delle pagine
+      // supports[asid - 1].sup_privatePgTbl
     }
 
     // create sst process
@@ -89,6 +93,15 @@ void initSST() {
     };
     SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &p, 0);
+  }
+}
+
+void initSwapPool() {
+  swap_pool = (swpo_t *) FRAMEPOOLSTART;
+  for (int i = 0; i < POOLSIZE; i++) {
+    swap_pool->swpo_frames[i].swpo_asid = -1;
+    swap_pool->swpo_frames[i].swpo_page = -1;
+    swap_pool->swpo_frames[i].swpo_pte_ptr = NULL;
   }
 }
 
