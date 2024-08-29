@@ -3,28 +3,26 @@
 #include "syscall.h"
 
 extern state_t *currentState;
+extern pcb_PTR current_process;
 extern void interruptHandler();
-
-extern unsigned int debug;
 
 /**
  * Gestisce il caso in cui si prova accedere ad un indirizzo 
  * virtuale che non ha un corrispettivo nella TLB
  */
 void uTLB_RefillHandler() {
-    debug = 0x100;
-    setENTRYHI(0x80000000);
-    setENTRYLO(0x00000000);
+    unsigned int p = currentState->entry_hi;
+    pteEntry_t pte = current_process->p_supportStruct->sup_privatePgTbl[p];
+    setENTRYHI(pte.pte_entryHI);
+    setENTRYLO(pte.pte_entryLO);
     TLBWR();
-    LDST((state_t*) 0x0FFFF000);
+    LDST(currentState);
 }
 
 /**
- * Gestisce tutte gli altri tipi di eccezioni
- * 
+ * Gestisce tutti gli altri tipi di eccezione
  */
 void exceptionHandler() {
-    debug = 0x101;
     switch((getCAUSE() & GETEXECCODE) >> CAUSESHIFT) {
         case IOINTERRUPTS:
             // External Device Interrupt
@@ -32,7 +30,8 @@ void exceptionHandler() {
             break;
         case 1 ... 3:
             // TLB Exception
-            passUpOrDie(PGFAULTEXCEPT);
+            uTLB_RefillHandler();
+            // passUpOrDie(PGFAULTEXCEPT);
             break;
         case 4 ... 7:
             // Program Traps p1: Address and Bus Error Exception

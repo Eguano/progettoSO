@@ -14,11 +14,24 @@
 typedef signed int cpu_t;
 typedef unsigned int memaddr;
 
+/* Swap pool entry descriptor */
+typedef struct swpoEntry_t {
+    unsigned int swpo_asid;     /* UProc ASID */
+    unsigned int swpo_page;     /* Logical page number (VPN) */
+    pteEntry_t *swpo_pte_ptr;   /* Ptr to matching page table entry belonging to owner process */
+} swpoEntry_t;
+
+/* Swap pool descriptor */
+typedef struct swpo_t {
+    swpoEntry_t swpo_frames[POOLSIZE];
+} swpo_t;
+
 /* Page Table Entry descriptor */
 typedef struct pteEntry_t {
     unsigned int pte_entryHI;
     unsigned int pte_entryLO;
 } pteEntry_t;
+
 
 /* Support level context */
 typedef struct context_t {
@@ -26,6 +39,7 @@ typedef struct context_t {
     unsigned int status;
     unsigned int pc;
 } context_t;
+
 
 /* Support level descriptor */
 typedef struct support_t {
@@ -88,8 +102,21 @@ typedef struct ssi_create_process_t
 
 typedef struct ssi_do_io_t
 {
-    memaddr *commandAddr;
+    memaddr* commandAddr;
     unsigned int commandValue;
 } ssi_do_io_t, *ssi_do_io_PTR;
+
+typedef struct sst_print_t
+{
+    int length;
+    char *string;
+} sst_print_t, *sst_print_PTR;
+
+/* Page swap pool information structure type */
+typedef struct swap_t {
+    int         sw_asid;   /* ASID number			*/
+    int         sw_pageNo; /* page's virt page no.	*/
+    pteEntry_t *sw_pte;    /* page's PTE entry.	*/
+} swap_t;
 
 #endif

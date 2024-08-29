@@ -16,7 +16,6 @@
 /* Hardware & software constants */
 #define PAGESIZE 4096 /* page size in bytes	*/
 #define WORDLEN  4    /* word size in bytes	*/
-#define WORDSIZE 32   /* word size in bits */
 
 
 /* timer, timescale, TOD-LO and other bus regs */
@@ -41,14 +40,19 @@
 
 /* Mikeyg Added constants */
 
-#define MAXPROC 40
-#define MAXMESSAGES 40
+#define MAXPROC 50
+#define MAXMESSAGES 50
 
 #define ANYMESSAGE 0
 #define MSGNOGOOD -1
 #define DEST_NOT_EXIST -2
 #define SENDMESSAGE -1
 #define RECEIVEMESSAGE -2
+
+#define SENDMSG 1
+#define RECEIVEMSG 2
+
+#define PARENT 0
 
 #define CREATEPROCESS 1
 #define TERMPROCESS   2
@@ -57,6 +61,11 @@
 #define CLOCKWAIT     5
 #define GETSUPPORTPTR 6
 #define GETPROCESSID  7
+
+#define GET_TOD 1
+#define TERMINATE 2
+#define WRITEPRINTER 3
+#define WRITETERMINAL 4
 
 /* Status register constants */
 #define ALLOFF      0x00000000
@@ -68,24 +77,24 @@
 #define DISABLEINTS 0xFFFFFFFE
 
 /* Cause register constants */
-#define GETEXECCODE         0x0000007C
-#define CLEAREXECCODE       0xFFFFFF00
+#define GETEXECCODE    0x0000007C
+#define CLEAREXECCODE  0xFFFFFF00
 #define INTPROCINTERRUPT    0x00000000
-#define LOCALTIMERINT       0x00000200   
-#define TIMERINTERRUPT      0x00000400   
-#define DISKINTERRUPT       0x00000800   
-#define FLASHINTERRUPT      0x00001000   
+#define LOCALTIMERINT  0x00000200
+#define TIMERINTERRUPT 0x00000400
+#define DISKINTERRUPT  0x00000800
+#define FLASHINTERRUPT 0x00001000
 #define NETWORKINTERRUPT    0x00002000
-#define PRINTINTERRUPT      0x00004000   
-#define TERMINTERRUPT       0x00008000   
-#define IOINTERRUPTS        0
-#define INTDEVBITMAP        0x10000040
-#define TLBINVLDL           2
-#define TLBINVLDS           3
-#define SYSEXCEPTION        8
-#define BREAKEXCEPTION      9
-#define PRIVINSTR           10
-#define CAUSESHIFT          2
+#define PRINTINTERRUPT 0x00004000
+#define TERMINTERRUPT  0x00008000
+#define IOINTERRUPTS   0
+#define INTDEVBITMAP   0x10000040
+#define TLBINVLDL      2
+#define TLBINVLDS      3
+#define SYSEXCEPTION   8
+#define BREAKEXCEPTION 9
+#define PRIVINSTR      10
+#define CAUSESHIFT     2
 
 
 /* EntryLO register (NDVG) constants */
@@ -119,8 +128,8 @@
 
 #define OKCHARTRANS  5
 #define TRANSMITCHAR 2
-#define RECEIVECHAR  2		// aggiunta comando di ricezione del carattere
-#define PRINTCHR	 2		// aggiunta comando di stampa del carattere
+#define RECEIVECHAR 	2		// aggiunta comando di ricezione del carattere
+#define PRINTCHR	2		// aggiunta comando di stampa del carattere
 
 #define SEEKTOCYL  2
 #define DISKREAD   3
@@ -200,13 +209,22 @@
 /* Inizio indirizzo di device registers */
 #define START_DEVREG		0x10000054
 
+
 // DEFINITE DA IVAN
-// Max number of device's instances
+// max number of device's instances
 #define MAXDEV 8
-// service ssi to unblock process waiting for IO
+// SSI service to end DOIO operation
 #define ENDIO 8
-// valori booleani per comodità
+// boolean values
 #define TRUE 1
 #define FALSE 0
+// base address del terminal 0
+#define TERM0ADDR 0x10000254
+// base address della printer 0
+#define PRINTER0ADDR 0x100001D4
+// per controllare status del terminal
+#define TERMSTATMASK 0xFF
+// status della printer
+#define READY 1
 
 #endif

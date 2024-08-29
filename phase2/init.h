@@ -20,19 +20,19 @@ struct list_head ready_queue;
 struct list_head external_blocked_list[4][MAXDEV];
 // list of blocked PCBs for the pseudo-clock
 struct list_head pseudoclock_blocked_list;
-// list of blocked PCBs for every terminal (transmitter and receiver)
+// a list of blocked PCBs for every terminal (transmitter and receiver)
 struct list_head terminal_blocked_list[2][MAXDEV];
 // SSI process
 pcb_PTR ssi_pcb;
 // p2test process
-pcb_PTR p2test_pcb;
+pcb_PTR p3test_pcb;
 // processor0's state at exception time
 state_t *currentState;
-
-// DEBUG: traced region
-unsigned int debug;
+// Swap pool 
+swpo_t *swap_pool;
 
 static void initialize();
 int isInDevicesLists(pcb_t *p);
+void copyRegisters(state_t *dest, state_t *src);
 
 #endif
