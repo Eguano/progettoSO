@@ -30,8 +30,8 @@ void exceptionHandler() {
             break;
         case 1 ... 3:
             // TLB Exception
-            uTLB_RefillHandler();
-            // passUpOrDie(PGFAULTEXCEPT);
+            // uTLB_RefillHandler();
+            passUpOrDie(PGFAULTEXCEPT);
             break;
         case 4 ... 7:
             // Program Traps p1: Address and Bus Error Exception

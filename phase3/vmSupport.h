@@ -5,6 +5,10 @@
 #ifndef VMSUPPORT_H
 #define VMSUPPORT_H
 
+#include <umps/libumps.h>
+#include "../headers/const.h"
+#include "../headers/types.h"
 
+void TLB_ExceptionHandler();
 
 #endif
