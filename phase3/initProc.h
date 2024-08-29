@@ -11,7 +11,8 @@
 
 pcb_PTR mutexHolderProcess;
 pcb_PTR swapMutexProcess;
-
+state_t swapMutexState; 
+          
 // processo di test
 pcb_PTR test_pcb;
 // indirizzo di memoria corrente
@@ -24,7 +25,9 @@ state_t sstStates[UPROCMAX];
 support_t supports[UPROCMAX];
 
 void test();
+void initSwapMutex();
 void initUprocState();
 void initSST();
+void swapMutex();
 
 #endif

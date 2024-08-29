@@ -15,8 +15,9 @@ void test() {
   addr -= 3*PAGESIZE;
 
   /* TODO: Initialize the Level 4/Phase 3 data structures.
-  (The Swap Pool table and a Swap Mutex process) */
-  
+  (The Swap Pool table) */
+  initSwapMutex();
+
   initUprocState();
 
   initSST();
@@ -61,6 +62,7 @@ void initSST() {
     sstStates[asid - 1].entry_hi = asid << ASIDSHIFT;
     addr -= PAGESIZE;
     // init support
+    // TODO: possibile errore in stckPtr -> guardare ultimo punto della sez 10
     supports[asid - 1].sup_asid = asid;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
@@ -87,5 +89,37 @@ void initSST() {
     };
     SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &p, 0);
+  }
+}
+
+void initSwapMutex() {
+  swapMutexState.reg_sp = (memaddr) addr;
+  swapMutexState.pc_epc = (memaddr) swapMutex;
+  swapMutexState.status = ALLOFF | IEPON | IMON | TEBITON;
+
+  addr -= PAGESIZE;
+
+  pcb_PTR p;
+  ssi_create_process_t create = {
+      .state = &swapMutexState,
+      .support = NULL,
+  };
+  ssi_payload_t createPayload = {
+      .service_code = CREATEPROCESS,
+      .arg = &create,
+  };
+  SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &p, 0);
+  
+  swapMutexProcess = p;
+}
+
+void swapMutex() {
+  while(TRUE) {
+    unsigned int sender = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
+    mutexHolderProcess = (pcb_t *)sender;
+    SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
+    SYSCALL(RECEIVEMESSAGE, sender, 0, 0);
+    mutexHolderProcess = NULL;
   }
 }

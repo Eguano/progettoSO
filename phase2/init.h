@@ -32,6 +32,7 @@ state_t *currentState;
 swpo_t *swap_pool;
 
 static void initialize();
+void initSwapPool();
 int isInDevicesLists(pcb_t *p);
 void copyRegisters(state_t *dest, state_t *src);
 
