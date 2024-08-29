@@ -8,6 +8,7 @@
 #include <umps/libumps.h>
 #include "../headers/const.h"
 #include "../headers/types.h"
+#include "../phase3/initProc.h"
 
 void TLB_ExceptionHandler();
 

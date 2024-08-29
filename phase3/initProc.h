@@ -24,6 +24,9 @@ state_t sstStates[UPROCMAX];
 // strutture di supporto condivise
 support_t supports[UPROCMAX];
 
+// Swap pool 
+swpo_t *swap_pool[POOLSIZE];
+
 void test();
 void initSwapMutex();
 void initUprocState();

@@ -28,8 +28,6 @@ pcb_PTR ssi_pcb;
 pcb_PTR p3test_pcb;
 // processor0's state at exception time
 state_t *currentState;
-// Swap pool 
-swpo_t *swap_pool;
 
 static void initialize();
 void initSwapPool();
