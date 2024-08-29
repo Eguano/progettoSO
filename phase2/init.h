@@ -25,7 +25,7 @@ struct list_head terminal_blocked_list[2][MAXDEV];
 // SSI process
 pcb_PTR ssi_pcb;
 // p2test process
-pcb_PTR p2test_pcb;
+pcb_PTR p3test_pcb;
 // processor0's state at exception time
 state_t *currentState;
 // Swap pool 

@@ -17,7 +17,7 @@ void schedule() {
 
   if (current_process != NULL) {
     // load the PLT
-    setTIMER(TIMESLICE);
+    setTIMER(TIMESLICE * (*((cpu_t *)TIMESCALEADDR)));
     // perform Load Processor State
     LDST(&current_process->p_s);
   } else if (process_count == 1) {
@@ -25,7 +25,7 @@ void schedule() {
     HALT();
   } else if (process_count > 0 && waiting_count > 0) {
     // waiting for an interrupt
-    setSTATUS((IECON | IMON) & !TEBITON);
+    setSTATUS((IECON | IMON) & (~TEBITON));
     WAIT();
   } else if (process_count > 0 && waiting_count == 0) {
     // deadlock

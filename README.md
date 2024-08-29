@@ -6,14 +6,25 @@ Per compilare il progetto:
 ```bash
 make
 ```
-
 Aprire `umps3` e creare una macchina, controllare per bene che i path corrispondano.
 
-Per eliminare i file .o e temporanei
+Per eliminare i file .o e temporanei:
 ```bash
 make clean
 ```
 (farlo prima di un push sul repo)
+
+Per compilare i testers:
+```bash
+  cd testers
+  make
+```
+
+Per eliminare i .o dei testers:
+```bash
+  cd testers
+  make clean
+``` 
 
 ## Dettagli implementativi
 Motivazioni dietro ad alcune scelte di implementazione:
