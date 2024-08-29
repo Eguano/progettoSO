@@ -29,11 +29,11 @@ void main() {
   process_count++;
 
   // istantiate a second process
-  p2test_pcb = allocPcb();
-  p2test_pcb->p_s.status |= IEPON | IMON | TEBITON;
-  p2test_pcb->p_s.reg_sp = ssi_pcb->p_s.reg_sp - (2 * PAGESIZE);
-  p2test_pcb->p_s.pc_epc = p2test_pcb->p_s.reg_t9 = (memaddr) test;
-  insertProcQ(&ready_queue, p2test_pcb);
+  p3test_pcb = allocPcb();
+  p3test_pcb->p_s.status |= IEPON | IMON | TEBITON;
+  p3test_pcb->p_s.reg_sp = ssi_pcb->p_s.reg_sp - (2 * PAGESIZE);
+  p3test_pcb->p_s.pc_epc = p3test_pcb->p_s.reg_t9 = (memaddr) test;
+  insertProcQ(&ready_queue, p3test_pcb);
   process_count++;
 
   // call the scheduler
