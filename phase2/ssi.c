@@ -168,7 +168,7 @@ void destroyProcess(pcb_t *p) {
  * @param toBlock processo da bloccare
  */
 static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
-  int instance;
+  int instance, found;
   // per sicurezza controlla che non sia in ready queue
   outProcQ(&ready_queue, toBlock);
   // calcola l'indirizzo base del registro
@@ -194,8 +194,8 @@ static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
       instance = (devRegAddr - PRINTER0ADDR) / 0x00000010;
       insertProcQ(&external_blocked_list[3][instance], toBlock);
       break;
-    case TERM0ADDR ... 0x100002C4:;
-      int found = FALSE;
+    case TERM0ADDR ... 0x100002C4:
+      found = FALSE;
       // terminal receiver
       for (int i = 0; i < MAXDEV && found == FALSE; i++) {
         if (devRegAddr == TERM0ADDR + 0x00000010*i) {
