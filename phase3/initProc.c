@@ -62,6 +62,7 @@ void initSST() {
     sstStates[asid - 1].entry_hi = asid << ASIDSHIFT;
     addr -= PAGESIZE;
     // init support
+    // TODO: possibile errore in stckPtr -> guardare ultimo punto della sez 10
     supports[asid - 1].sup_asid = asid;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
