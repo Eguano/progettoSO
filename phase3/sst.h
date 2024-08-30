@@ -12,7 +12,7 @@
 support_t *getSupport();
 void SSTInitialize();
 void SSTHandler(int asid);
-void terminate();
+void terminate(int asid);
 void writePrinter(int asid, sst_print_PTR arg);
 void writeTerminal(int asid, sst_print_PTR arg);
 

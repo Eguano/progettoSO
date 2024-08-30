@@ -6,13 +6,10 @@ extern void SSTInitialize();
 extern void supportExceptionHandler();
 extern void TLB_ExceptionHandler();
 
-unsigned int debug;
-
 /**
  * Funzione di test per la fase 3
  */
 void test() {
-  debug = 0x100;
   test_pcb = current_process;
   RAMTOP(addr);
   // spostamento oltre i processi ssi e test
@@ -21,9 +18,9 @@ void test() {
   // swap pool
   initSwapPool();
 
-  initSwapMutex();
-
   initUprocState();
+
+  initSwapMutex();
 
   initSST();
 
@@ -59,6 +56,7 @@ void initUprocState() {
  * Inizializza la swap pool.
  */
 void initSwapPool() {
+  // DEBUG:
   swap_pool[POOLSIZE] = (swpo_t *) FRAMEPOOLSTART;
   for (int i = 0; i < POOLSIZE; i++) {
     swap_pool[i]->swpo_asid = NOPROC;
@@ -71,7 +69,8 @@ void initSwapPool() {
  * Inizializza e crea i processi SST con support
  */
 void initSST() {
-  for (int asid = 1; asid <= UPROCMAX; asid++) {
+  // DEBUG: un solo processo inizialmente
+  for (int asid = 1; asid <= 1; asid++) {
     // init state
     sstStates[asid - 1].pc_epc = sstStates[asid - 1].reg_t9 = (memaddr) SSTInitialize;
     sstStates[asid - 1].reg_sp = (memaddr) addr;
@@ -83,7 +82,6 @@ void initSST() {
     supports[asid - 1].sup_asid = asid;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
-    // TODO: aggiungere indirizzo di funzione pager
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) TLB_ExceptionHandler;
     addr -= PAGESIZE;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].stackPtr = (memaddr) addr;
@@ -91,7 +89,7 @@ void initSST() {
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].pc = (memaddr) supportExceptionHandler;
     addr -= PAGESIZE;
     for (int i = 0; i < USERPGTBLSIZE; i++) {
-      initPageTableEntry(asid, &supports[asid - 1].sup_privatePgTbl[i], i);
+      initPageTableEntry(asid, &(supports[asid - 1].sup_privatePgTbl[i]), i);
     }
 
     // create sst process
@@ -119,7 +117,7 @@ void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
     entry->pte_entryHI |= (idx << VPNSHIFT);
   }
   else {
-    entry->pte_entryHI |= 0xBFFFF;
+    entry->pte_entryHI |= 0xBFFFF000;
   }
 
   // Setto l'asid
@@ -134,7 +132,7 @@ void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
 
 void initSwapMutex() {
   swapMutexState.reg_sp = (memaddr) addr;
-  swapMutexState.pc_epc = (memaddr) swapMutex;
+  swapMutexState.pc_epc = swapMutexState.reg_t9 = (memaddr) swapMutex;
   swapMutexState.status = ALLOFF | IEPON | IMON | TEBITON;
 
   addr -= PAGESIZE;
