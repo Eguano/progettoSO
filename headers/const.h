@@ -228,4 +228,7 @@
 // status della printer
 #define READY 1
 
+// Macro
+#define GET_DEV_REG(intLine, devNo) ((memaddr *)(START_DEVREG + ((intLine - 3)* 0x80) + (devNo * 0x10)))
+
 #endif
