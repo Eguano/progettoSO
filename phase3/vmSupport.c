@@ -1,10 +1,12 @@
 #include "vmSupport.h"
 
+#include "./sysSupport.h"
+
 extern pcb_PTR current_process;
 extern pcb_PTR ssi_pcb;
 extern pcb_PTR mutexHolderProcess;
 extern pcb_PTR swapMutexProcess;
-extern swpo_t *swap_pool;
+extern swpo_t *swap_pool[POOLSIZE];
 
 
 void TLB_ExceptionHandler() {

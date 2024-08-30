@@ -39,7 +39,7 @@ kernel : ./phase3/initProc.o ./phase3/sst.o ./phase3/sysSupport.o ./phase3/vmSup
 	$(LD) -o $@ $^ $(LDFLAGS)
 
 clean :
-	-rm -f *.o ./phase3/*.o ./phase2/*.o ./phase1/*.o kernel kernel.*.umps
+	-rm -f *.o ./phase3/*.o ./phase2/*.o ./phase1/*.o kernel *.umps
 
 # Pattern rule for assembly modules
 %.o : %.S

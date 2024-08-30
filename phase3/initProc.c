@@ -4,20 +4,20 @@ extern pcb_PTR current_process;
 extern pcb_PTR ssi_pcb;
 extern void SSTInitialize();
 extern void supportExceptionHandler();
+extern void TLB_ExceptionHandler();
+
+unsigned int debug;
 
 /**
  * Funzione di test per la fase 3
  */
 void test() {
+  debug = 0x100;
   test_pcb = current_process;
   RAMTOP(addr);
   // spostamento oltre i processi ssi e test
   addr -= 3*PAGESIZE;
 
-  initSwapPool();
-
-  /* TODO: Initialize the Level 4/Phase 3 data structures.
-  (The Swap Pool table) */
   // swap pool
   initSwapPool();
 
@@ -84,14 +84,13 @@ void initSST() {
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
     // TODO: aggiungere indirizzo di funzione pager
-    // supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) pager;
+    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) TLB_ExceptionHandler;
     addr -= PAGESIZE;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].pc = (memaddr) supportExceptionHandler;
     addr -= PAGESIZE;
     for (int i = 0; i < USERPGTBLSIZE; i++) {
-      // TODO: inizializzare le singole entry della tabella delle pagine
       initPageTableEntry(asid, &supports[asid - 1].sup_privatePgTbl[i], i);
     }
 
@@ -107,15 +106,6 @@ void initSST() {
     };
     SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &p, 0);
-  }
-}
-
-void initSwapPool() {
-  swap_pool[POOLSIZE] = (swpo_t *) FRAMEPOOLSTART;
-  for (int i = 0; i < POOLSIZE; i++) {
-    swap_pool[i]->swpo_asid = -1;
-    swap_pool[i]->swpo_page = -1;
-    swap_pool[i]->swpo_pte_ptr = NULL;
   }
 }
 
