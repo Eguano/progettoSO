@@ -14,6 +14,8 @@ void test() {
   // spostamento oltre i processi ssi e test
   addr -= 3*PAGESIZE;
 
+  initSwapPool();
+
   /* TODO: Initialize the Level 4/Phase 3 data structures.
   (The Swap Pool table) */
   // swap pool
@@ -50,6 +52,18 @@ void initUprocState() {
     uprocStates[asid - 1].reg_sp = (memaddr) USERSTACKTOP;
     uprocStates[asid - 1].status = ALLOFF | USERPON | IEPON | IMON | TEBITON;
     uprocStates[asid - 1].entry_hi = asid << ASIDSHIFT; 
+  }
+}
+
+/**
+ * Inizializza la swap pool.
+ */
+void initSwapPool() {
+  swap_pool[POOLSIZE] = (swpo_t *) FRAMEPOOLSTART;
+  for (int i = 0; i < POOLSIZE; i++) {
+    swap_pool[i]->swpo_asid = NOPROC;
+    swap_pool[i]->swpo_page = -1;
+    swap_pool[i]->swpo_pte_ptr = NULL;
   }
 }
 

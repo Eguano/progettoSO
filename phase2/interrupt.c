@@ -110,7 +110,7 @@ void interruptHandler() {
  * @return 
  */
 memaddr *getDevReg(unsigned int intLine, unsigned int devIntLine) {
-    return (memaddr *)(START_DEVREG + ((intLine - 3)* 0x80) + (devIntLine * 0x10));
+    return GET_DEV_REG(intLine, devIntLine);
 }
 
 /**

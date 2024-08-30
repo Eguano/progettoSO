@@ -107,6 +107,7 @@
 #define GETPAGENO     0x3FFFF000
 #define GETSHAREFLAG  0xC0000000
 #define VPNSHIFT      12
+#define VPNMASK       0xFFFFF
 #define ASIDSHIFT     6
 #define SHAREDSEGFLAG 30
 
@@ -226,5 +227,8 @@
 #define TERMSTATMASK 0xFF
 // status della printer
 #define READY 1
+
+// Macro
+#define GET_DEV_REG(intLine, devNo) ((memaddr *)(START_DEVREG + ((intLine - 3)* 0x80) + (devNo * 0x10)))
 
 #endif

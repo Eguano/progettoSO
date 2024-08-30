@@ -75,6 +75,7 @@ static void initialize() {
   currentState = (state_t *)BIOSDATAPAGE;
 }
 
+
 /**
  * Controlla se il processo è in attesa di un device
  * 
