@@ -92,7 +92,7 @@ void initSST() {
     addr -= PAGESIZE;
     for (int i = 0; i < USERPGTBLSIZE; i++) {
       // TODO: inizializzare le singole entry della tabella delle pagine
-      // supports[asid - 1].sup_privatePgTbl
+      initPageTableEntry(asid, &supports[asid - 1].sup_privatePgTbl[i], i);
     }
 
     // create sst process
@@ -111,12 +111,35 @@ void initSST() {
 }
 
 void initSwapPool() {
-  swap_pool = (swpo_t *) FRAMEPOOLSTART;
+  swap_pool[POOLSIZE] = (swpo_t *) FRAMEPOOLSTART;
   for (int i = 0; i < POOLSIZE; i++) {
-    swap_pool->swpo_frames[i].swpo_asid = -1;
-    swap_pool->swpo_frames[i].swpo_page = -1;
-    swap_pool->swpo_frames[i].swpo_pte_ptr = NULL;
+    swap_pool[i]->swpo_asid = -1;
+    swap_pool[i]->swpo_page = -1;
+    swap_pool[i]->swpo_pte_ptr = NULL;
   }
+}
+
+void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
+  // Setto tutti i bit a 0
+  entry->pte_entryHI &= 0x0;
+
+  // Setto il VPN
+  if (idx < 31){
+    entry->pte_entryHI |= KUSEG;
+    entry->pte_entryHI |= (idx << VPNSHIFT);
+  }
+  else {
+    entry->pte_entryHI |= 0xBFFFF;
+  }
+
+  // Setto l'asid
+  entry->pte_entryHI |= (asid << ASIDSHIFT);
+
+  entry->pte_entryLO &= 0x0;
+
+  // Setto D = 1
+  entry->pte_entryLO |= DIRTYON;
+
 }
 
 void initSwapMutex() {
