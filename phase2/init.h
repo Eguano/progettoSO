@@ -30,7 +30,6 @@ pcb_PTR p3test_pcb;
 state_t *currentState;
 
 static void initialize();
-void initSwapPool();
 int isInDevicesLists(pcb_t *p);
 void copyRegisters(state_t *dest, state_t *src);
 

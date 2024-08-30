@@ -17,6 +17,8 @@ state_t swapMutexState;
 pcb_PTR test_pcb;
 // indirizzo di memoria corrente
 memaddr addr;
+// Swap pool 
+swpo_t *swap_pool;
 // state degli U-proc
 state_t uprocStates[UPROCMAX];
 // state degli SST
@@ -28,9 +30,10 @@ support_t supports[UPROCMAX];
 swpo_t *swap_pool[POOLSIZE];
 
 void test();
-void initSwapMutex();
 void initUprocState();
 void initSST();
+void initSwapPool();
+void initSwapMutex();
 void swapMutex();
 
 #endif
