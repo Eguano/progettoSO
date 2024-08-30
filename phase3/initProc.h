@@ -33,5 +33,6 @@ void initSST();
 void initSwapPool();
 void initSwapMutex();
 void swapMutex();
+void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx);
 
 #endif
