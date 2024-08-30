@@ -7,20 +7,13 @@ extern pcb_PTR ssi_pcb;
 extern pcb_PTR mutexHolderProcess;
 extern pcb_PTR swapMutexProcess;
 extern swpo_t *swap_pool[POOLSIZE];
+extern support_t *getSupport();
 
 
 void TLB_ExceptionHandler() {
 
     // Ritiro la struttura di supporto di current process dalla SSI
-    ssi_payload_t payload = {
-        .service_code = GETSUPPORTPTR,
-        .arg = NULL,
-    };
-
-    support_t *support_PTR;
-
-    SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int)(&payload), 0);
-    SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int)(&support_PTR), 0);
+    support_t *support_PTR = getSupport();
 
     unsigned int exceptCause = support_PTR->sup_exceptState[PGFAULTEXCEPT].cause;
 
@@ -36,6 +29,7 @@ void TLB_ExceptionHandler() {
             SYSCALL(RECEIVEMESSAGE, (unsigned int)swapMutexProcess, 0, 0);
         }
 
+        // DEBUG: int p = GET_VPN(sup_st->sup_exceptState[PGFAULTEXCEPT].entry_hi);
         unsigned int p = (support_PTR->sup_exceptState[PGFAULTEXCEPT].entry_hi >> 12) & VPNMASK;
 
         // Scelgo un frame da sostituire
@@ -65,6 +59,7 @@ void TLB_ExceptionHandler() {
         // Metto a 0 i bit per il PFN e lo aggiorno
         support_PTR->sup_privatePgTbl[p].pte_entryLO &= 0xFFF;
         support_PTR->sup_privatePgTbl[p].pte_entryLO |= (i << 12);
+        // DEBUG: support_PTR->sup_privatePgTbl[p].pte_entryLO |= frameAddr;
 
         // Aggiorno il TLB
         updateTLB(&support_PTR->sup_privatePgTbl[p]);
@@ -134,11 +129,11 @@ void updateTLB(pteEntry_t *entry) {
         // (cioe' quella che vogliamo aggiornare)
         TLBWI();
 
-        // Resetto entryLo
+        // Resetto entryLo DEBUG: non necessario?
         setENTRYLO(oldEntryLo);
     }
 
-    // Resetto entryHi
+    // Resetto entryHi DEBUG: non necessario?
     setENTRYHI(oldEntryHi);
 
 }

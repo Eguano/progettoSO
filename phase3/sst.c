@@ -3,6 +3,7 @@
 extern pcb_PTR test_pcb;
 extern pcb_PTR ssi_pcb;
 extern state_t uprocStates[UPROCMAX];
+extern swpo_t *swap_pool[POOLSIZE];
 
 /**
  * Richiede all'SSI la struttura di supporto del processo SST
@@ -65,7 +66,7 @@ void SSTHandler(int asid) {
         break;
       case TERMINATE:
         // terminare SST e di conseguenza l'U-proc
-        terminate();
+        terminate(asid);
         break;
       case WRITEPRINTER:
         // scrivere una stringa su una printer
@@ -87,8 +88,13 @@ void SSTHandler(int asid) {
 /**
  * Termina il processo corrente
  */
-void terminate() {
-  // TODO: se l'U-proc occupa dei frame sono da liberare
+void terminate(int asid) {
+  // TODO: se l'U-proc occupa dei frame sono da liberare (trasf in i++)
+  for (int i = 0; i < POOLSIZE; ++i) {
+    if (swap_pool[i]->swpo_asid == asid) {
+      swap_pool[i]->swpo_asid = -1; // Libero il frame
+    }
+  }
   // comunica al test la terminazione
   SYSCALL(SENDMESSAGE, (unsigned int) test_pcb, 0, 0);
   // vera terminazione
