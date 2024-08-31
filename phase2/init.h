@@ -29,6 +29,9 @@ pcb_PTR p3test_pcb;
 // processor0's state at exception time
 state_t *currentState;
 
+// DEBUG:
+unsigned int debug;
+
 static void initialize();
 int isInDevicesLists(pcb_t *p);
 void copyRegisters(state_t *dest, state_t *src);
