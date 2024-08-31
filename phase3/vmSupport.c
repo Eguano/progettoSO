@@ -6,7 +6,7 @@ extern pcb_PTR current_process;
 extern pcb_PTR ssi_pcb;
 extern pcb_PTR mutexHolderProcess;
 extern pcb_PTR swapMutexProcess;
-extern swpo_t *swap_pool[POOLSIZE];
+extern swpo_t swap_pool[POOLSIZE];
 extern support_t *getSupport();
 
 
@@ -35,7 +35,7 @@ void TLB_ExceptionHandler() {
         // Scelgo un frame da sostituire
         unsigned int i = selectFrame();
 
-        if (swap_pool[i]->swpo_asid != NOPROC) {
+        if (swap_pool[i].swpo_asid != NOPROC) {
             invalidateFrame(i, support_PTR);
         }
 
@@ -45,10 +45,10 @@ void TLB_ExceptionHandler() {
         readWriteBackingStore(flashDevReg, frameAddr, p, FLASHREAD);
 
         // Aggiorno la swap pool entry
-        swap_pool[i]->swpo_asid = support_PTR->sup_asid;
-        swap_pool[i]->swpo_page = p;
+        swap_pool[i].swpo_asid = support_PTR->sup_asid;
+        swap_pool[i].swpo_page = p;
         // ASSICURARSI CHE LA USER PAGE TABLE SIA INIZIALIZZATA PER TUTTI I PROCESSI
-        swap_pool[i]->swpo_pte_ptr = &support_PTR->sup_privatePgTbl[p];
+        swap_pool[i].swpo_pte_ptr = &support_PTR->sup_privatePgTbl[p];
 
         // Disabilito gli interrupt
         setSTATUS(getSTATUS() & (~IECON));
@@ -79,7 +79,7 @@ static unsigned int selectFrame() {
     static int last = -1;
 
     for (int i = 0; i < POOLSIZE; i++) {
-        if (swap_pool[i]->swpo_asid == NOPROC)
+        if (swap_pool[i].swpo_asid == NOPROC)
             return i;
     }
 
@@ -91,18 +91,18 @@ void invalidateFrame(unsigned int frame, support_t *support_PTR){
     setSTATUS(getSTATUS() & (~IECON));
 
     // Nego valid
-    swap_pool[frame]->swpo_pte_ptr->pte_entryLO &= (~VALIDON);
+    swap_pool[frame].swpo_pte_ptr->pte_entryLO &= (~VALIDON);
 
     // Aggiorno il TLB
-    updateTLB(swap_pool[frame]->swpo_pte_ptr);
+    updateTLB(swap_pool[frame].swpo_pte_ptr);
     
     // Riabilito gli interrupt
     setSTATUS(getSTATUS() | IECON);
 
     // Aggiorno il backing store
     memaddr frameAddr = (memaddr) FRAMEPOOLSTART + (frame * PAGESIZE);
-    dtpreg_t *flashDevReg = (dtpreg_t *)GET_DEV_REG(FLASHINT, swap_pool[frame]->swpo_asid);
-    unsigned int res = readWriteBackingStore(flashDevReg, frameAddr, swap_pool[frame]->swpo_page, FLASHWRITE);
+    dtpreg_t *flashDevReg = (dtpreg_t *)GET_DEV_REG(FLASHINT, swap_pool[frame].swpo_asid);
+    unsigned int res = readWriteBackingStore(flashDevReg, frameAddr, swap_pool[frame].swpo_page, FLASHWRITE);
 
     if (res != 1) {
         supportTrapHandler(&support_PTR->sup_exceptState[PGFAULTEXCEPT]);
