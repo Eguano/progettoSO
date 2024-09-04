@@ -4,6 +4,7 @@ extern pcb_PTR test_pcb;
 extern pcb_PTR ssi_pcb;
 extern state_t uprocStates[UPROCMAX];
 extern swpo_t swap_pool[POOLSIZE];
+extern unsigned int debug;
 
 extern unsigned int debug;
 
@@ -142,6 +143,7 @@ void writePrinter(int asid, sst_print_PTR arg) {
 
     // verifica la correttezza dell'operazione
     if (status != READY) {
+      debug = 0x7;
       PANIC();
     }
 
@@ -178,6 +180,7 @@ void writeTerminal(int asid, sst_print_PTR arg) {
 
     // controlla la correttezza dell'operazione
     if ((status & TERMSTATMASK) != RECVD) {
+      debug = 0x8;
       PANIC();
     }
 

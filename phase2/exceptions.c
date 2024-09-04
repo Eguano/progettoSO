@@ -11,11 +11,17 @@ extern void interruptHandler();
  * virtuale che non ha un corrispettivo nella TLB
  */
 void uTLB_RefillHandler() {
-    unsigned int p = currentState->entry_hi;
-    pteEntry_t pte = current_process->p_supportStruct->sup_privatePgTbl[p];
-    setENTRYHI(pte.pte_entryHI);
-    setENTRYLO(pte.pte_entryLO);
+    // Prendo il page number da entryHi
+    unsigned int p = (currentState->entry_hi >> 12) & VPNMASK;
+
+    // Mi preparo per inserire la pagina nel TLB
+    setENTRYHI(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryHI);
+    setENTRYLO(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryLO);
+
+    // La inserisco
     TLBWR();
+
+    // Restituisco il controllo
     LDST(currentState);
 }
 

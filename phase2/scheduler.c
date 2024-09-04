@@ -7,6 +7,8 @@ extern int waiting_count;
 extern pcb_PTR current_process;
 extern struct list_head ready_queue;
 
+extern unsigned int debug;
+
 /**
  * Carica un processo per essere mandato in run, altrimenti blocca l'esecuzione.
  * <p>Salvare lo stato, rimuovere il processo precedente ecc viene svolto dal chiamante
@@ -29,6 +31,7 @@ void schedule() {
     WAIT();
   } else if (process_count > 0 && waiting_count == 0) {
     // deadlock
+    debug = 0x9;
     PANIC();
   }
 }
