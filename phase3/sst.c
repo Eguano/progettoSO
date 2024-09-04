@@ -4,7 +4,6 @@ extern pcb_PTR test_pcb;
 extern pcb_PTR ssi_pcb;
 extern state_t uprocStates[UPROCMAX];
 extern swpo_t swap_pool[POOLSIZE];
-extern unsigned int debug;
 
 extern unsigned int debug;
 
