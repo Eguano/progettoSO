@@ -9,40 +9,50 @@ extern pcb_PTR swapMutexProcess;
 extern swpo_t swap_pool[POOLSIZE];
 extern support_t *getSupport();
 
+extern unsigned int debug;
+
 
 void TLB_ExceptionHandler() {
+    debug = 0x100;
 
     // Ritiro la struttura di supporto di current process dalla SSI
     support_t *support_PTR = getSupport();
+    debug = 0x101;
 
     unsigned int exceptCause = support_PTR->sup_exceptState[PGFAULTEXCEPT].cause;
 
     // Se la causa e' di tipo TLB-Modification (Cause.ExecCode == 1) la gestisco come una trap
     if ((exceptCause & GETEXECCODE) >> CAUSESHIFT == 1) {
+        debug = 0x102;
         supportTrapHandler(&support_PTR->sup_exceptState[PGFAULTEXCEPT]);
     }
     else {
+        debug = 0x103;
         // Garantisco la mutua esclusione sulla swap pool 
         // mandando un messaggio al processo mutex per la swap pool
         if (current_process != mutexHolderProcess) {
             SYSCALL(SENDMESSAGE, (unsigned int)swapMutexProcess, 0, 0);
             SYSCALL(RECEIVEMESSAGE, (unsigned int)swapMutexProcess, 0, 0);
         }
+        debug = 0x104;
 
-        // DEBUG: int p = GET_VPN(sup_st->sup_exceptState[PGFAULTEXCEPT].entry_hi);
         unsigned int p = (support_PTR->sup_exceptState[PGFAULTEXCEPT].entry_hi >> 12) & VPNMASK;
 
         // Scelgo un frame da sostituire
         unsigned int i = selectFrame();
+        debug = 0x105;
 
         if (swap_pool[i].swpo_asid != NOPROC) {
+            debug = 0x106;
             invalidateFrame(i, support_PTR);
         }
+        debug = 0x107;
 
         // Leggo la pagina dal backing store al frame
         memaddr frameAddr = (memaddr) FRAMEPOOLSTART + (i * PAGESIZE);
         dtpreg_t *flashDevReg = (dtpreg_t *)GET_DEV_REG(FLASHINT, support_PTR->sup_asid);
         readWriteBackingStore(flashDevReg, frameAddr, p, FLASHREAD);
+        debug = 0x108;
 
         // Aggiorno la swap pool entry
         swap_pool[i].swpo_asid = support_PTR->sup_asid;
@@ -59,16 +69,18 @@ void TLB_ExceptionHandler() {
         // Metto a 0 i bit per il PFN e lo aggiorno
         support_PTR->sup_privatePgTbl[p].pte_entryLO &= 0xFFF;
         support_PTR->sup_privatePgTbl[p].pte_entryLO |= (i << 12);
-        // DEBUG: support_PTR->sup_privatePgTbl[p].pte_entryLO |= frameAddr;
+        debug = 0x109;
 
         // Aggiorno il TLB
         updateTLB(&support_PTR->sup_privatePgTbl[p]);
+        debug = 0x110;
 
         // Riabilito gli interrupt
         setSTATUS(getSTATUS() | IECON);
 
         // Rilascio la mutex
         SYSCALL(SENDMESSAGE, (unsigned int)swapMutexProcess, 0, 0);
+        debug = 0x111;
 
         // Restituisco il controllo al current process
         LDST(&support_PTR->sup_exceptState[PGFAULTEXCEPT]);

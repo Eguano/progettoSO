@@ -23,6 +23,8 @@ state_t uprocStates[UPROCMAX];
 state_t sstStates[UPROCMAX];
 // strutture di supporto condivise
 support_t supports[UPROCMAX];
+// array dei processi SST
+pcb_PTR sstArray[UPROCMAX];
 // Swap pool 
 swpo_t swap_pool[POOLSIZE];
 

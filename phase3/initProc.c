@@ -12,28 +12,22 @@ extern unsigned int debug;
  * Funzione di test per la fase 3
  */
 void test() {
-  debug = 0x1;
   test_pcb = current_process;
   RAMTOP(addr);
   // spostamento oltre i processi ssi e test
   addr -= 3*PAGESIZE;
-  debug = 0x2;
 
   // swap pool
   initSwapPool();
-  debug = 0x3;
 
   initUprocState();
-  debug = 0x4;
 
   initSwapMutex();
-  debug = 0x5;
 
   initSST();
-  debug = 0x6;
 
   // aspetta 8 messaggi che segnalano la terminazione degli U-proc
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < 1; i++) {
     SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
   }
   // terminazione del processo test
@@ -69,7 +63,7 @@ void initSwapPool() {
   for (int i = 0; i < POOLSIZE; i++) {
     swap_pool[i].swpo_asid = NOPROC;
     swap_pool[i].swpo_page = -1;
-    swap_pool[i].swpo_pte_ptr = NULL;
+    // swap_pool[i].swpo_pte_ptr = NULL;
   }
 }
 
@@ -78,7 +72,7 @@ void initSwapPool() {
  */
 void initSST() {
   // DEBUG: un solo processo inizialmente
-  for (int asid = 1; asid <= 2; asid++) {
+  for (int asid = 1; asid <= 1; asid++) {
     // init state
     sstStates[asid - 1].pc_epc = sstStates[asid - 1].reg_t9 = (memaddr) SSTInitialize;
     sstStates[asid - 1].reg_sp = (memaddr) addr;
@@ -101,7 +95,6 @@ void initSST() {
     }
 
     // create sst process
-    pcb_PTR p;
     ssi_create_process_t create = {
       .state = &sstStates[asid - 1],
       .support = &supports[asid - 1],
@@ -111,7 +104,7 @@ void initSST() {
       .arg = &create,
     };
     SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
-    SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &p, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &sstArray[asid - 1], 0);
   }
 }
 
