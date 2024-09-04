@@ -78,7 +78,7 @@ void initSwapPool() {
  */
 void initSST() {
   // DEBUG: un solo processo inizialmente
-  for (int asid = 1; asid <= 2; asid++) {
+  for (int asid = 1; asid <= UPROCMAX; asid++) {
     // init state
     sstStates[asid - 1].pc_epc = sstStates[asid - 1].reg_t9 = (memaddr) SSTInitialize;
     sstStates[asid - 1].reg_sp = (memaddr) addr;
