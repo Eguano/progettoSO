@@ -7,25 +7,6 @@ extern pcb_PTR current_process;
 extern void interruptHandler();
 
 /**
- * Gestisce il caso in cui si prova accedere ad un indirizzo 
- * virtuale che non ha un corrispettivo nella TLB
- */
-void uTLB_RefillHandler() {
-    // Prendo il page number da entryHi
-    unsigned int p = (currentState->entry_hi >> 12) & VPNMASK;
-
-    // Mi preparo per inserire la pagina nel TLB
-    setENTRYHI(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryHI);
-    setENTRYLO(current_process->p_supportStruct->sup_privatePgTbl[p].pte_entryLO);
-
-    // La inserisco
-    TLBWR();
-
-    // Restituisco il controllo
-    LDST(currentState);
-}
-
-/**
  * Gestisce tutti gli altri tipi di eccezione
  */
 void exceptionHandler() {

@@ -11,6 +11,32 @@ extern support_t *getSupport();
 
 extern unsigned int debug;
 
+/**
+ * Gestisce il caso in cui si prova accedere ad un indirizzo 
+ * virtuale che non ha un corrispettivo nella TLB
+ */
+void uTLB_RefillHandler() {
+
+    // Prendo l'exception state
+    state_t *exception_state = (state_t *) BIOSDATAPAGE;
+    
+    // Prendo il page number da entryHi
+    unsigned int p = (exception_state->entry_hi & GETPAGENO) >> VPNSHIFT;
+    if (p == 0x3FFFF) {
+        p = 31;
+    }
+    pteEntry_t *pgTblEntry = &(current_process->p_supportStruct->sup_privatePgTbl[p]);
+
+    // Mi preparo per inserire la pagina nel TLB
+    setENTRYHI(pgTblEntry->pte_entryHI);
+    setENTRYLO(pgTblEntry->pte_entryLO);
+
+    // La inserisco
+    TLBWR();
+
+    // Restituisco il controllo
+    LDST(exception_state);
+}
 
 void TLB_ExceptionHandler() {
     debug = 0x100;
