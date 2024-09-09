@@ -29,7 +29,7 @@ pcb_PTR sstArray[UPROCMAX];
 swpo_t swap_pool[POOLSIZE];
 
 void test();
-void initUprocState();
+void initUproc();
 void initSST();
 void initSwapPool();
 void initSwapMutex();
