@@ -57,7 +57,7 @@ void SSTHandler(int asid) {
   while (TRUE) {
     debug = 0x300;
     ssi_payload_PTR p_payload = NULL;
-    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
+    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMSG, ANYMESSAGE, (unsigned int) &p_payload, 0);
     // risposta da inviare all'U-proc
     unsigned int response = 0;
     debug = 0x301;
@@ -86,7 +86,7 @@ void SSTHandler(int asid) {
     }
 
     debug = 0x302;
-    SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
+    SYSCALL(SENDMSG, (unsigned int) sender, response, 0);
   }
 }
 

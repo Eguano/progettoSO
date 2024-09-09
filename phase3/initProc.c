@@ -20,7 +20,7 @@ void test() {
   // swap pool
   initSwapPool();
 
-  initUprocState();
+  initUproc();
 
   initSwapMutex();
 
@@ -45,12 +45,26 @@ void test() {
 /**
  * Inizializza gli state di ogni U-proc
  */
-void initUprocState() {
+void initUproc() {
   for (int asid = 1; asid <= UPROCMAX; asid++) {
     uprocStates[asid - 1].pc_epc = uprocStates[asid - 1].reg_t9 = (memaddr) UPROCSTARTADDR;
     uprocStates[asid - 1].reg_sp = (memaddr) USERSTACKTOP;
     uprocStates[asid - 1].status = ALLOFF | USERPON | IEPON | IMON | TEBITON;
-    uprocStates[asid - 1].entry_hi = asid << ASIDSHIFT; 
+    uprocStates[asid - 1].entry_hi = asid << ASIDSHIFT;
+
+    // init support
+    supports[asid - 1].sup_asid = asid;
+    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
+    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
+    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) TLB_ExceptionHandler;
+    addr -= PAGESIZE;
+    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].stackPtr = (memaddr) addr;
+    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
+    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].pc = (memaddr) supportExceptionHandler;
+    addr -= PAGESIZE;
+    for (int i = 0; i < USERPGTBLSIZE; i++) {
+      initPageTableEntry(asid, &(supports[asid - 1].sup_privatePgTbl[i]), i);
+    }
   }
 }
 
@@ -79,20 +93,6 @@ void initSST() {
     sstStates[asid - 1].status = ALLOFF | IEPON | IMON | TEBITON;
     sstStates[asid - 1].entry_hi = asid << ASIDSHIFT;
     addr -= PAGESIZE;
-    // init support
-    // TODO: possibile errore in stckPtr -> guardare ultimo punto della sez 10
-    supports[asid - 1].sup_asid = asid;
-    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
-    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
-    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) TLB_ExceptionHandler;
-    addr -= PAGESIZE;
-    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].stackPtr = (memaddr) addr;
-    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
-    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].pc = (memaddr) supportExceptionHandler;
-    addr -= PAGESIZE;
-    for (int i = 0; i < USERPGTBLSIZE; i++) {
-      initPageTableEntry(asid, &(supports[asid - 1].sup_privatePgTbl[i]), i);
-    }
 
     // create sst process
     ssi_create_process_t create = {
