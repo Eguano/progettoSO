@@ -21,7 +21,7 @@ void uTLB_RefillHandler() {
     state_t *exception_state = (state_t *) BIOSDATAPAGE;
     
     // Prendo il page number da entryHi
-    unsigned int p = (exception_state->entry_hi & GETPAGENO) >> VPNSHIFT;
+    int p = (exception_state->entry_hi & GETPAGENO) >> VPNSHIFT;
     if (p == 0x3FFFF) {
         p = 31;
     }
@@ -38,7 +38,7 @@ void uTLB_RefillHandler() {
     LDST(exception_state);
 }
 
-void TLB_ExceptionHandler() {
+void Pager() {
     debug = 0x100;
 
     // Ritiro la struttura di supporto di current process dalla SSI
@@ -63,7 +63,7 @@ void TLB_ExceptionHandler() {
         debug = 0x104;
 
         // Prendo il page number da entryHi
-        unsigned int p = (support_PTR->sup_exceptState[PGFAULTEXCEPT].entry_hi & GETPAGENO) >> VPNSHIFT;
+        int p = (support_PTR->sup_exceptState[PGFAULTEXCEPT].entry_hi & GETPAGENO) >> VPNSHIFT;
         if (p == 0x3FFFF) {
             p = 31;
         }
@@ -78,27 +78,40 @@ void TLB_ExceptionHandler() {
         }
         debug = 0x107;
 
+        // Aggiorno il backing store
+        int blockToUpload = (swap_pool[i].swpo_pte_ptr->pte_entryHI & GETPAGENO) >> VPNSHIFT;
+        if(blockToUpload == 0x3FFFF){
+            blockToUpload = 31;
+        }
+
         // Leggo la pagina dal backing store al frame
-        memaddr frameAddr = (memaddr) FRAMEPOOLSTART + (i * PAGESIZE);
-        dtpreg_t *flashDevReg = (dtpreg_t *)GET_DEV_REG(FLASHINT, support_PTR->sup_asid);
-        readWriteBackingStore(flashDevReg, frameAddr, p, FLASHREAD);
+        memaddr frameAddr = (memaddr) swap_pool[i].swpo_pte_ptr->pte_entryLO & 0xFFFFF000;
+        dtpreg_t *flashDevReg = (dtpreg_t *)GET_DEV_REG(FLASHINT, swap_pool[i].swpo_asid);
+        int status = readWriteBackingStore(flashDevReg, frameAddr, p, FLASHREAD);
+        
+        if (status != 1) {
+            supportTrapHandler(&support_PTR->sup_exceptState[PGFAULTEXCEPT]);
+        }
+        
         debug = 0x108;
 
         // Aggiorno la swap pool entry
         swap_pool[i].swpo_asid = support_PTR->sup_asid;
         swap_pool[i].swpo_page = p;
         // ASSICURARSI CHE LA USER PAGE TABLE SIA INIZIALIZZATA PER TUTTI I PROCESSI
-        swap_pool[i].swpo_pte_ptr = &support_PTR->sup_privatePgTbl[p];
+        swap_pool[i].swpo_pte_ptr = &(support_PTR->sup_privatePgTbl[p]);
 
         // Disabilito gli interrupt
         setSTATUS(getSTATUS() & (~IECON));
 
         // Aggiorno Valid e Dirty nella page table entry
-        support_PTR->sup_privatePgTbl[p].pte_entryLO |= VALIDON;
-        support_PTR->sup_privatePgTbl[p].pte_entryLO &= (~DIRTYON);
+        support_PTR->sup_privatePgTbl[p].pte_entryLO = frameAddr | VALIDON | DIRTYON;
+
+        // support_PTR->sup_privatePgTbl[p].pte_entryLO |= VALIDON;
+        // support_PTR->sup_privatePgTbl[p].pte_entryLO &= (~DIRTYON);
         // Metto a 0 i bit per il PFN e lo aggiorno
-        support_PTR->sup_privatePgTbl[p].pte_entryLO &= 0xFFF;
-        support_PTR->sup_privatePgTbl[p].pte_entryLO |= (i << 12);
+        // support_PTR->sup_privatePgTbl[p].pte_entryLO &= 0xFFF;
+        // support_PTR->sup_privatePgTbl[p].pte_entryLO |= (i << 12);
         debug = 0x109;
 
         // Aggiorno il TLB
@@ -142,21 +155,23 @@ void invalidateFrame(unsigned int frame, support_t *support_PTR){
     setSTATUS(getSTATUS() | IECON);
 
     // Aggiorno il backing store
-    memaddr frameAddr = (memaddr) FRAMEPOOLSTART + (frame * PAGESIZE);
-    dtpreg_t *flashDevReg = (dtpreg_t *)GET_DEV_REG(FLASHINT, swap_pool[frame].swpo_asid);
-    unsigned int res = readWriteBackingStore(flashDevReg, frameAddr, swap_pool[frame].swpo_page, FLASHWRITE);
+    int blockToUpload = (swap_pool[frame].swpo_pte_ptr->pte_entryHI & GETPAGENO) >> VPNSHIFT;
+    if(blockToUpload == 0x3FFFF){
+        blockToUpload = 31;
+    }
 
-    if (res != 1) {
+    // memaddr frameAddr = (memaddr) swap_pool[frame].swpo_pte_ptr->pte_entryLO & 0xFFFFF000;
+    memaddr frameAddr = (memaddr) FRAMEPOOLSTART + (frame * PAGESIZE);
+    dtpreg_t *flashDevReg = (dtpreg_t *)GET_DEV_REG(FLASHINT, swap_pool[frame].swpo_asid - 1);
+    int status = readWriteBackingStore(flashDevReg, frameAddr, blockToUpload, FLASHWRITE);
+
+    if (status != 1) {
         supportTrapHandler(&support_PTR->sup_exceptState[PGFAULTEXCEPT]);
     }
 }
 
 void updateTLB(pteEntry_t *entry) {
 
-    // Salvo il vecchio stato di entryHi e entryLo
-    unsigned int oldEntryHi = getENTRYHI();
-    unsigned int oldEntryLo = getENTRYLO();
-    
     // Setto entryHi all'entryHi dell'entry da rimuovere
     setENTRYHI(entry->pte_entryHI);
 
@@ -166,17 +181,12 @@ void updateTLB(pteEntry_t *entry) {
 
     // Se lo trovo, setto anche entryLo cosi' da poter aggiornare la entry con TLBWI()
     if ((getINDEX() & PRESENTFLAG) == 0) {
+        setENTRYHI(entry->pte_entryHI);
         setENTRYLO(entry->pte_entryLO);
         // Aggiorna sia il campo entryHi che entryLo della entry del TLB attualmente puntata dall'index
         // (cioe' quella che vogliamo aggiornare)
         TLBWI();
-
-        // Resetto entryLo DEBUG: non necessario?
-        setENTRYLO(oldEntryLo);
     }
-
-    // Resetto entryHi DEBUG: non necessario?
-    setENTRYHI(oldEntryHi);
 
 }
 
@@ -191,7 +201,7 @@ void updateTLB(pteEntry_t *entry) {
  * 
  * @return              Il risultato dell'operazione di R/W
  */
-unsigned int readWriteBackingStore(dtpreg_t *flashDevReg, memaddr dataMemAddr, unsigned int devBlockNo, unsigned int opType) {
+int readWriteBackingStore(dtpreg_t *flashDevReg, memaddr dataMemAddr, unsigned int devBlockNo, unsigned int opType) {
     // Ricavo l'indirizzo del device register
     flashDevReg->data0 = dataMemAddr;
 
@@ -206,10 +216,11 @@ unsigned int readWriteBackingStore(dtpreg_t *flashDevReg, memaddr dataMemAddr, u
         .arg = &doIO
     };
 
+    unsigned int status;
     // Invio la richiesta
-    unsigned int res;
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&payload), 0);
-    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int)&res, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int) &status, 0);
 
-    return res;
+    return status;
+
 }

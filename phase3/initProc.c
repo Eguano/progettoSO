@@ -4,7 +4,7 @@ extern pcb_PTR current_process;
 extern pcb_PTR ssi_pcb;
 extern void SSTInitialize();
 extern void supportExceptionHandler();
-extern void TLB_ExceptionHandler();
+extern void Pager();
 
 extern unsigned int debug;
 
@@ -56,7 +56,7 @@ void initUproc() {
     supports[asid - 1].sup_asid = asid;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
-    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) TLB_ExceptionHandler;
+    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) Pager;
     addr -= PAGESIZE;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
@@ -109,25 +109,11 @@ void initSST() {
 }
 
 void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
-  // Setto tutti i bit a 0
-  entry->pte_entryHI &= 0x0;
-
-  // Setto il VPN
-  if (idx < 31){
-    entry->pte_entryHI |= KUSEG;
-    entry->pte_entryHI |= (idx << VPNSHIFT);
-  }
-  else {
-    entry->pte_entryHI |= 0xBFFFF000;
-  }
-
-  // Setto l'asid
-  entry->pte_entryHI |= (asid << ASIDSHIFT);
-
-  entry->pte_entryLO &= 0x0;
-
-  // Setto D = 1
-  entry->pte_entryLO |= DIRTYON;
+  if (idx < 31)
+    entry->pte_entryHI = KUSEG + (idx << VPNSHIFT) + (asid << ASIDSHIFT);
+  else
+    entry->pte_entryHI = 0xBFFFF000 + (asid << ASIDSHIFT); // stack page
+  entry->pte_entryLO = DIRTYON;
 
 }
 
