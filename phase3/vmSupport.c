@@ -62,7 +62,11 @@ void TLB_ExceptionHandler() {
         }
         debug = 0x104;
 
-        unsigned int p = (support_PTR->sup_exceptState[PGFAULTEXCEPT].entry_hi >> 12) & VPNMASK;
+        // Prendo il page number da entryHi
+        unsigned int p = (support_PTR->sup_exceptState[PGFAULTEXCEPT].entry_hi & GETPAGENO) >> VPNSHIFT;
+        if (p == 0x3FFFF) {
+            p = 31;
+        }
 
         // Scelgo un frame da sostituire
         unsigned int i = selectFrame();
