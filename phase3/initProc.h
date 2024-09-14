@@ -9,10 +9,13 @@
 #include "../headers/const.h"
 #include "../headers/types.h"
 
+// processo che possiede attualmente la mutex
 pcb_PTR mutexHolderProcess;
+// processo mutex
 pcb_PTR swapMutexProcess;
+// state del processo mutex
 state_t swapMutexState; 
-          
+
 // processo di test
 pcb_PTR test_pcb;
 // indirizzo di memoria corrente
@@ -23,15 +26,17 @@ state_t uprocStates[UPROCMAX];
 state_t sstStates[UPROCMAX];
 // strutture di supporto condivise
 support_t supports[UPROCMAX];
+// array dei processi SST
+pcb_PTR sstArray[UPROCMAX];
 // Swap pool 
-swpo_t *swap_pool[POOLSIZE];
-
+swpo_t swap_pool[POOLSIZE];
 
 void test();
-void initUprocState();
+void initUproc();
 void initSST();
 void initSwapPool();
 void initSwapMutex();
 void swapMutex();
+void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx);
 
 #endif

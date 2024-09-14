@@ -48,9 +48,9 @@ static void initialize() {
   // Pass Up Vector for Processor 0
   passupvector_t *passUpVec = (passupvector_t *) PASSUPVECTOR;
   passUpVec->tlb_refill_handler = (memaddr) uTLB_RefillHandler;
-  passUpVec->tlb_refill_stackPtr = KERNELSTACK;
+  passUpVec->tlb_refill_stackPtr = (memaddr) KERNELSTACK;
   passUpVec->exception_handler = (memaddr) exceptionHandler;
-  passUpVec->exception_stackPtr = KERNELSTACK;
+  passUpVec->exception_stackPtr = (memaddr) KERNELSTACK;
 
   // level 2 structures
   initPcbs();

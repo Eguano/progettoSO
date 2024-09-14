@@ -4,6 +4,9 @@ extern pcb_PTR current_process;
 extern pcb_PTR ssi_pcb;
 extern void SSTInitialize();
 extern void supportExceptionHandler();
+extern void Pager();
+
+extern unsigned int debug;
 
 /**
  * Funzione di test per la fase 3
@@ -14,21 +17,17 @@ void test() {
   // spostamento oltre i processi ssi e test
   addr -= 3*PAGESIZE;
 
-  initSwapPool();
-
-  /* TODO: Initialize the Level 4/Phase 3 data structures.
-  (The Swap Pool table) */
   // swap pool
   initSwapPool();
 
-  initSwapMutex();
+  initUproc();
 
-  initUprocState();
+  initSwapMutex();
 
   initSST();
 
   // aspetta 8 messaggi che segnalano la terminazione degli U-proc
-  for (int i = 0; i < UPROCMAX; i++) {
+  for (int i = 0; i < 1; i++) {
     SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
   }
   // terminazione del processo test
@@ -46,12 +45,26 @@ void test() {
 /**
  * Inizializza gli state di ogni U-proc
  */
-void initUprocState() {
+void initUproc() {
   for (int asid = 1; asid <= UPROCMAX; asid++) {
     uprocStates[asid - 1].pc_epc = uprocStates[asid - 1].reg_t9 = (memaddr) UPROCSTARTADDR;
     uprocStates[asid - 1].reg_sp = (memaddr) USERSTACKTOP;
     uprocStates[asid - 1].status = ALLOFF | USERPON | IEPON | IMON | TEBITON;
-    uprocStates[asid - 1].entry_hi = asid << ASIDSHIFT; 
+    uprocStates[asid - 1].entry_hi = asid << ASIDSHIFT;
+
+    // init support
+    supports[asid - 1].sup_asid = asid;
+    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
+    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
+    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) Pager;
+    addr -= PAGESIZE;
+    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].stackPtr = (memaddr) addr;
+    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
+    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].pc = (memaddr) supportExceptionHandler;
+    addr -= PAGESIZE;
+    for (int i = 0; i < USERPGTBLSIZE; i++) {
+      initPageTableEntry(asid, &(supports[asid - 1].sup_privatePgTbl[i]), i);
+    }
   }
 }
 
@@ -59,11 +72,12 @@ void initUprocState() {
  * Inizializza la swap pool.
  */
 void initSwapPool() {
-  swap_pool[POOLSIZE] = (swpo_t *) FRAMEPOOLSTART;
+  // DEBUG:
+  // swap_pool[POOLSIZE] = (swpo_t *) FRAMEPOOLSTART;
   for (int i = 0; i < POOLSIZE; i++) {
-    swap_pool[i]->swpo_asid = NOPROC;
-    swap_pool[i]->swpo_page = -1;
-    swap_pool[i]->swpo_pte_ptr = NULL;
+    swap_pool[i].swpo_asid = NOPROC;
+    swap_pool[i].swpo_page = -1;
+    // swap_pool[i].swpo_pte_ptr = NULL;
   }
 }
 
@@ -71,32 +85,16 @@ void initSwapPool() {
  * Inizializza e crea i processi SST con support
  */
 void initSST() {
-  for (int asid = 1; asid <= UPROCMAX; asid++) {
+  // DEBUG: un solo processo inizialmente
+  for (int asid = 1; asid <= 1; asid++) {
     // init state
     sstStates[asid - 1].pc_epc = sstStates[asid - 1].reg_t9 = (memaddr) SSTInitialize;
     sstStates[asid - 1].reg_sp = (memaddr) addr;
     sstStates[asid - 1].status = ALLOFF | IEPON | IMON | TEBITON;
     sstStates[asid - 1].entry_hi = asid << ASIDSHIFT;
     addr -= PAGESIZE;
-    // init support
-    // TODO: possibile errore in stckPtr -> guardare ultimo punto della sez 10
-    supports[asid - 1].sup_asid = asid;
-    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
-    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
-    // TODO: aggiungere indirizzo di funzione pager
-    // supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) pager;
-    addr -= PAGESIZE;
-    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].stackPtr = (memaddr) addr;
-    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
-    supports[asid - 1].sup_exceptContext[GENERALEXCEPT].pc = (memaddr) supportExceptionHandler;
-    addr -= PAGESIZE;
-    for (int i = 0; i < USERPGTBLSIZE; i++) {
-      // TODO: inizializzare le singole entry della tabella delle pagine
-      // supports[asid - 1].sup_privatePgTbl
-    }
 
     // create sst process
-    pcb_PTR p;
     ssi_create_process_t create = {
       .state = &sstStates[asid - 1],
       .support = &supports[asid - 1],
@@ -106,27 +104,29 @@ void initSST() {
       .arg = &create,
     };
     SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
-    SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &p, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &sstArray[asid - 1], 0);
   }
 }
 
-void initSwapPool() {
-  swap_pool = (swpo_t *) FRAMEPOOLSTART;
-  for (int i = 0; i < POOLSIZE; i++) {
-    swap_pool->swpo_frames[i].swpo_asid = -1;
-    swap_pool->swpo_frames[i].swpo_page = -1;
-    swap_pool->swpo_frames[i].swpo_pte_ptr = NULL;
-  }
+void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
+  if (idx < 31)
+    entry->pte_entryHI = KUSEG + (idx << VPNSHIFT) + (asid << ASIDSHIFT);
+  else
+    entry->pte_entryHI = 0xBFFFF000 + (asid << ASIDSHIFT); // stack page
+  entry->pte_entryLO = DIRTYON;
+
 }
 
+/**
+ * Inizializza il processo swapMutex
+ */
 void initSwapMutex() {
   swapMutexState.reg_sp = (memaddr) addr;
-  swapMutexState.pc_epc = (memaddr) swapMutex;
+  swapMutexState.pc_epc = swapMutexState.reg_t9 = (memaddr) swapMutex;
   swapMutexState.status = ALLOFF | IEPON | IMON | TEBITON;
 
   addr -= PAGESIZE;
 
-  pcb_PTR p;
   ssi_create_process_t create = {
       .state = &swapMutexState,
       .support = NULL,
@@ -136,16 +136,19 @@ void initSwapMutex() {
       .arg = &create,
   };
   SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
-  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &p, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &swapMutexProcess, 0);
   
-  swapMutexProcess = p;
 }
 
+/**
+ * Gestisce l'assegnazione della mutua esclusione
+ */
 void swapMutex() {
   while(TRUE) {
     unsigned int sender = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
     mutexHolderProcess = (pcb_t *)sender;
     SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
+    // Il processo che possiede la mutex si deve occupare di rilasciarla
     SYSCALL(RECEIVEMESSAGE, sender, 0, 0);
     mutexHolderProcess = NULL;
   }

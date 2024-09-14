@@ -3,6 +3,9 @@
 extern pcb_PTR test_pcb;
 extern pcb_PTR ssi_pcb;
 extern state_t uprocStates[UPROCMAX];
+extern swpo_t swap_pool[POOLSIZE];
+
+extern unsigned int debug;
 
 /**
  * Richiede all'SSI la struttura di supporto del processo SST
@@ -52,10 +55,12 @@ void SSTInitialize() {
  */
 void SSTHandler(int asid) {
   while (TRUE) {
+    debug = 0x300;
     ssi_payload_PTR p_payload = NULL;
-    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
+    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMSG, ANYMESSAGE, (unsigned int) &p_payload, 0);
     // risposta da inviare all'U-proc
     unsigned int response = 0;
+    debug = 0x301;
 
     // accoglimento richiesta
     switch(p_payload->service_code) {
@@ -65,7 +70,7 @@ void SSTHandler(int asid) {
         break;
       case TERMINATE:
         // terminare SST e di conseguenza l'U-proc
-        terminate();
+        terminate(asid);
         break;
       case WRITEPRINTER:
         // scrivere una stringa su una printer
@@ -80,15 +85,21 @@ void SSTHandler(int asid) {
         break;
     }
 
-    SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
+    debug = 0x302;
+    SYSCALL(SENDMSG, (unsigned int) sender, response, 0);
   }
 }
 
 /**
  * Termina il processo corrente
  */
-void terminate() {
-  // TODO: se l'U-proc occupa dei frame sono da liberare
+void terminate(int asid) {
+  // se l'U-proc occupa dei frame sono da liberare
+  for (int i = 0; i < POOLSIZE; i++) {
+    if (swap_pool[i].swpo_asid == asid) {
+      swap_pool[i].swpo_asid = NOPROC;
+    }
+  }
   // comunica al test la terminazione
   SYSCALL(SENDMESSAGE, (unsigned int) test_pcb, 0, 0);
   // vera terminazione
@@ -131,6 +142,7 @@ void writePrinter(int asid, sst_print_PTR arg) {
 
     // verifica la correttezza dell'operazione
     if (status != READY) {
+      debug = 0x7;
       PANIC();
     }
 
@@ -167,6 +179,7 @@ void writeTerminal(int asid, sst_print_PTR arg) {
 
     // controlla la correttezza dell'operazione
     if ((status & TERMSTATMASK) != RECVD) {
+      debug = 0x8;
       PANIC();
     }
 

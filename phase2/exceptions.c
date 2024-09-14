@@ -7,19 +7,6 @@ extern pcb_PTR current_process;
 extern void interruptHandler();
 
 /**
- * Gestisce il caso in cui si prova accedere ad un indirizzo 
- * virtuale che non ha un corrispettivo nella TLB
- */
-void uTLB_RefillHandler() {
-    unsigned int p = currentState->entry_hi;
-    pteEntry_t pte = current_process->p_supportStruct->sup_privatePgTbl[p];
-    setENTRYHI(pte.pte_entryHI);
-    setENTRYLO(pte.pte_entryLO);
-    TLBWR();
-    LDST(currentState);
-}
-
-/**
  * Gestisce tutti gli altri tipi di eccezione
  */
 void exceptionHandler() {
