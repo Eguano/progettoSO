@@ -10,6 +10,7 @@ extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern void copyRegisters(state_t *dest, state_t *src);
+extern unsigned int debug;
 
 /**
  * Gestisce una richiesta ricevuta da un processo
@@ -168,53 +169,53 @@ void destroyProcess(pcb_t *p) {
  * @param toBlock processo da bloccare
  */
 static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
-  int instance, found;
-  // per sicurezza controlla che non sia in ready queue
-  outProcQ(&ready_queue, toBlock);
-  // calcola l'indirizzo base del registro
-  memaddr devRegAddr = (memaddr) arg->commandAddr - 0x4;
-  switch (devRegAddr) {
-    case START_DEVREG ... 0x100000C4:
-      // disks
-      instance = (devRegAddr - START_DEVREG) / 0x00000010;
-      insertProcQ(&external_blocked_list[0][instance], toBlock);
-      break;
-    case 0x100000D4 ... 0x10000144:
-      // flash
-      instance = (devRegAddr - 0x100000D4) / 0x00000010;
-      insertProcQ(&external_blocked_list[1][instance], toBlock);
-      break;
-    case 0x10000154 ... 0x100001C4:
-      // network
-      instance = (devRegAddr - 0x10000154) / 0x00000010;
-      insertProcQ(&external_blocked_list[2][instance], toBlock);
-      break;
-    case PRINTER0ADDR ... 0x10000244:
-      // printer
-      instance = (devRegAddr - PRINTER0ADDR) / 0x00000010;
-      insertProcQ(&external_blocked_list[3][instance], toBlock);
-      break;
-    case TERM0ADDR ... 0x100002C4:
-      found = FALSE;
-      // terminal receiver
-      for (int i = 0; i < MAXDEV && found == FALSE; i++) {
-        if (devRegAddr == TERM0ADDR + 0x00000010*i) {
-          insertProcQ(&terminal_blocked_list[1][i], toBlock);
-          found = TRUE;
-        }
-      }
-      // terminal transmitter
-      for (int i = 0; i < MAXDEV && found == FALSE; i++) {
-        if (devRegAddr == TERM0ADDR + 0x8 + 0x00000010*i) {
-          insertProcQ(&terminal_blocked_list[0][i], toBlock);
-          found = TRUE;
-        }
-      }
-      break;
-    default:
-      // error
-      break;
+  
+  // ciclo for che itera fra i dispositvi terminali
+  for (int dev = 0; dev < 8; dev++) {
+    // calcolo indirizzo di base
+    termreg_t *base_address = (termreg_t *)DEV_REG_ADDR(7, dev);
+    if (arg->commandAddr == (memaddr) & (base_address->recv_command)) {
+      // inizializzazione del campo aggiuntivo del pcb
+      insertProcQ(&terminal_blocked_list[1][dev], toBlock);
+      waiting_count++;
+      *arg->commandAddr = arg->commandValue;
+      return;
+    } else if (arg->commandAddr == (memaddr) & (base_address->transm_command)) {
+      // inizializzazione del campo aggiuntivo del pcb
+      insertProcQ(&terminal_blocked_list[0][dev], toBlock);
+      waiting_count++;
+      *arg->commandAddr = arg->commandValue;
+      return;
+    }
   }
+  // ciclo for che itera fra tutti gli altri dispositivi
+  for (int line = 3; line < 7; line++) {
+    for (int dev = 0; dev < 8; dev++) {
+      dtpreg_t *base_address = (dtpreg_t *)DEV_REG_ADDR(line, dev);
+      if (arg->commandAddr == (memaddr) & (base_address->command)) {
+        // inizializzazione del campo aggiuntivo del pcb
+        switch (line) {
+          case IL_DISK:
+            debug = 0x999;
+            insertProcQ(&external_blocked_list[line - 3][dev], toBlock); // Metto line - 3 per mappare le costanti al vettore
+            break;
+          case IL_FLASH:
+            debug = 0x998;
+            insertProcQ(&external_blocked_list[line - 3][dev], toBlock); // Metto line - 3 per mappare le costanti al vettore
+            break;
+          case IL_ETHERNET:
+            debug = 0x997;
+            insertProcQ(&external_blocked_list[line - 3][dev], toBlock); // Metto line - 3 per mappare le costanti al vettore
+            break;
+          case IL_PRINTER:
+            debug = 0x996;
+            insertProcQ(&external_blocked_list[line - 3][dev], toBlock); // Metto line - 3 per mappare le costanti al vettore
+            break;
+        }
+      }
+    }
+  }
+
   waiting_count++;
   *arg->commandAddr = arg->commandValue;
 }

@@ -73,6 +73,7 @@ static void initialize() {
   }
   mkEmptyProcQ(&pseudoclock_blocked_list);
   currentState = (state_t *)BIOSDATAPAGE;
+  stateCauseReg = &currentState->cause;
 }
 
 

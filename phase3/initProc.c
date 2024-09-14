@@ -15,7 +15,7 @@ void test() {
   test_pcb = current_process;
   RAMTOP(addr);
   // spostamento oltre i processi ssi e test
-  addr -= 3*PAGESIZE;
+  addr -= (3*PAGESIZE);
 
   // swap pool
   initSwapPool();
@@ -45,7 +45,7 @@ void test() {
 /**
  * Inizializza gli state di ogni U-proc
  */
-void initUproc() {
+static void initUproc() {
   for (int asid = 1; asid <= UPROCMAX; asid++) {
     uprocStates[asid - 1].pc_epc = uprocStates[asid - 1].reg_t9 = (memaddr) UPROCSTARTADDR;
     uprocStates[asid - 1].reg_sp = (memaddr) USERSTACKTOP;
@@ -71,7 +71,7 @@ void initUproc() {
 /**
  * Inizializza la swap pool.
  */
-void initSwapPool() {
+static void initSwapPool() {
   // DEBUG:
   // swap_pool[POOLSIZE] = (swpo_t *) FRAMEPOOLSTART;
   for (int i = 0; i < POOLSIZE; i++) {
@@ -84,7 +84,7 @@ void initSwapPool() {
 /**
  * Inizializza e crea i processi SST con support
  */
-void initSST() {
+static void initSST() {
   // DEBUG: un solo processo inizialmente
   for (int asid = 1; asid <= 1; asid++) {
     // init state
@@ -108,7 +108,7 @@ void initSST() {
   }
 }
 
-void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
+static void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
   if (idx < 31)
     entry->pte_entryHI = KUSEG + (idx << VPNSHIFT) + (asid << ASIDSHIFT);
   else
@@ -120,7 +120,7 @@ void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
 /**
  * Inizializza il processo swapMutex
  */
-void initSwapMutex() {
+static void initSwapMutex() {
   swapMutexState.reg_sp = (memaddr) addr;
   swapMutexState.pc_epc = swapMutexState.reg_t9 = (memaddr) swapMutex;
   swapMutexState.status = ALLOFF | IEPON | IMON | TEBITON;

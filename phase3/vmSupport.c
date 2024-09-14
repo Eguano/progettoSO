@@ -25,6 +25,7 @@ void uTLB_RefillHandler() {
     if (p == 0x3FFFF) {
         p = 31;
     }
+    debug = p;
     pteEntry_t *pgTblEntry = &(current_process->p_supportStruct->sup_privatePgTbl[p]);
 
     // Mi preparo per inserire la pagina nel TLB
@@ -45,7 +46,7 @@ void Pager() {
     support_t *support_PTR = getSupport();
     debug = 0x101;
 
-    unsigned int exceptCause = support_PTR->sup_exceptState[PGFAULTEXCEPT].cause;
+    int exceptCause = support_PTR->sup_exceptState[PGFAULTEXCEPT].cause;
 
     // Se la causa e' di tipo TLB-Modification (Cause.ExecCode == 1) la gestisco come una trap
     if ((exceptCause & GETEXECCODE) >> CAUSESHIFT == 1) {
@@ -85,8 +86,9 @@ void Pager() {
         }
 
         // Leggo la pagina dal backing store al frame
-        memaddr frameAddr = (memaddr) swap_pool[i].swpo_pte_ptr->pte_entryLO & 0xFFFFF000;
-        dtpreg_t *flashDevReg = (dtpreg_t *)GET_DEV_REG(FLASHINT, swap_pool[i].swpo_asid);
+        memaddr frameAddr = (memaddr)SWAP_POOL_AREA + (i * PAGESIZE);
+        debug = support_PTR->sup_asid - 1;
+        dtpreg_t *flashDevReg = (dtpreg_t *)DEV_REG_ADDR(FLASHINT, support_PTR->sup_asid - 1);
         int status = readWriteBackingStore(flashDevReg, frameAddr, p, FLASHREAD);
         
         if (status != 1) {
@@ -105,13 +107,13 @@ void Pager() {
         setSTATUS(getSTATUS() & (~IECON));
 
         // Aggiorno Valid e Dirty nella page table entry
-        support_PTR->sup_privatePgTbl[p].pte_entryLO = frameAddr | VALIDON | DIRTYON;
+        // support_PTR->sup_privatePgTbl[p].pte_entryLO = frameAddr | VALIDON | DIRTYON;
 
-        // support_PTR->sup_privatePgTbl[p].pte_entryLO |= VALIDON;
-        // support_PTR->sup_privatePgTbl[p].pte_entryLO &= (~DIRTYON);
+        support_PTR->sup_privatePgTbl[p].pte_entryLO |= VALIDON;
+        support_PTR->sup_privatePgTbl[p].pte_entryLO |= DIRTYON;
         // Metto a 0 i bit per il PFN e lo aggiorno
-        // support_PTR->sup_privatePgTbl[p].pte_entryLO &= 0xFFF;
-        // support_PTR->sup_privatePgTbl[p].pte_entryLO |= (i << 12);
+        support_PTR->sup_privatePgTbl[p].pte_entryLO &= 0xFFF;
+        support_PTR->sup_privatePgTbl[p].pte_entryLO |= (frameAddr);
         debug = 0x109;
 
         // Aggiorno il TLB
@@ -131,13 +133,13 @@ void Pager() {
 }
 
 static unsigned int selectFrame() {
-    static int last = -1;
 
     for (int i = 0; i < POOLSIZE; i++) {
         if (swap_pool[i].swpo_asid == NOPROC)
             return i;
     }
 
+    static int last = -1;
     return last = (last + 1) % POOLSIZE;
 }
 
@@ -161,8 +163,8 @@ void invalidateFrame(unsigned int frame, support_t *support_PTR){
     }
 
     // memaddr frameAddr = (memaddr) swap_pool[frame].swpo_pte_ptr->pte_entryLO & 0xFFFFF000;
-    memaddr frameAddr = (memaddr) FRAMEPOOLSTART + (frame * PAGESIZE);
-    dtpreg_t *flashDevReg = (dtpreg_t *)GET_DEV_REG(FLASHINT, swap_pool[frame].swpo_asid - 1);
+    memaddr frameAddr = (memaddr) SWAP_POOL_AREA + (frame * PAGESIZE);
+    dtpreg_t *flashDevReg = (dtpreg_t *)DEV_REG_ADDR(FLASHINT, support_PTR->sup_asid - 1);
     int status = readWriteBackingStore(flashDevReg, frameAddr, blockToUpload, FLASHWRITE);
 
     if (status != 1) {
@@ -218,6 +220,7 @@ int readWriteBackingStore(dtpreg_t *flashDevReg, memaddr dataMemAddr, unsigned i
 
     unsigned int status;
     // Invio la richiesta
+    debug = (unsigned int) &flashDevReg;
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&payload), 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int) &status, 0);
 

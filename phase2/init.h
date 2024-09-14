@@ -29,6 +29,9 @@ pcb_PTR p3test_pcb;
 // processor0's state at exception time
 state_t *currentState;
 
+unsigned int *stateCauseReg;
+
+
 // DEBUG:
 unsigned int debug;
 
