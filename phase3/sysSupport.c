@@ -10,13 +10,17 @@ extern pcb_PTR swapMutexProcess;
 
 extern unsigned int debug;
 
+/**
+ * Gestisce le eccezioni a livello supporto
+ */
 void supportExceptionHandler() {
     debug = 0x200;
+    // Richiede la struttura di supporto
     support_t *supPtr = getSupport();
     debug = 0x201;
     state_t *supExceptionState = &(supPtr->sup_exceptState[GENERALEXCEPT]);
     unsigned int supExceptionCause = (supExceptionState->cause & GETEXECCODE) >> CAUSESHIFT;
-    
+
     if(supExceptionCause == SYSEXCEPTION) {
         debug = 0x202;
         supportSyscallHandler(supExceptionState);
@@ -27,6 +31,11 @@ void supportExceptionHandler() {
     }
 }
 
+/**
+ * @brief Gestisce le system call richieste dagli Uproc
+ * 
+ * @param supExceptionState 
+ */
 void supportSyscallHandler(state_t *supExceptionState) {
     switch(supExceptionState->reg_a0) {
         case SENDMSG:
@@ -44,20 +53,38 @@ void supportSyscallHandler(state_t *supExceptionState) {
     }
 }
 
+/**
+ * USYS1: Manda un messaggio ad uno specifico processo destinatario.
+ * Se a1 contiene PARENT, allora manda il messaggio al suo SST
+ * 
+ * @param supExceptionState 
+ */
 void sendMsg(state_t *supExceptionState) {
-    if (supExceptionState->reg_a1 == PARENT) {
+    if(supExceptionState->reg_a1 == PARENT) {
       SYSCALL(SENDMESSAGE, (unsigned int)current_process->p_parent, supExceptionState->reg_a2, 0);
     } else {
       SYSCALL(SENDMESSAGE, supExceptionState->reg_a1, supExceptionState->reg_a2, 0);
     }
 }
 
+/**
+ * USYS2: Estrae un messaggio dalla inbox o, se questa è vuota, attende un messaggio
+ * 
+ * @param supExceptionState 
+ */
 void receiveMsg(state_t *supExceptionState) {
     SYSCALL(RECEIVEMESSAGE, supExceptionState->reg_a1, supExceptionState->reg_a2, 0);
 }
 
+
+/**
+ * Gestore delle trap a livello supporto
+ * 
+ * @param supExceptionState 
+ */
 void supportTrapHandler(state_t *supExceptionState) {
-    if (current_process == mutexHolderProcess)
+    // Se il processo aveva la mutua esclusione, allora la rilascia
+    if(current_process == mutexHolderProcess)
         SYSCALL(SENDMESSAGE, (unsigned int)swapMutexProcess, 0, 0);   
 
     ssi_payload_t term_process_payload = {
@@ -65,6 +92,7 @@ void supportTrapHandler(state_t *supExceptionState) {
         .arg = NULL,
     };
 
+    // Termina il processo
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&term_process_payload), 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, 0, 0);
 }
