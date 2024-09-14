@@ -124,7 +124,7 @@ void receiveMessage() {
 /**
  * Gestore Trap
  * 
- * @param indexValue 
+ * @param indexValue indica se si tratta di un PGFAULTEXCEPT o di un GENERALEXCEPT
  */
 void passUpOrDie(int indexValue) {
     

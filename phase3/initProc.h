@@ -9,8 +9,11 @@
 #include "../headers/const.h"
 #include "../headers/types.h"
 
+// processo che possiede attualmente la mutex
 pcb_PTR mutexHolderProcess;
+// processo mutex
 pcb_PTR swapMutexProcess;
+// state del processo mutex
 state_t swapMutexState; 
 
 // processo di test

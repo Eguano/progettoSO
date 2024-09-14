@@ -117,6 +117,9 @@ void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
 
 }
 
+/**
+ * Inizializza il processo swapMutex
+ */
 void initSwapMutex() {
   swapMutexState.reg_sp = (memaddr) addr;
   swapMutexState.pc_epc = swapMutexState.reg_t9 = (memaddr) swapMutex;
@@ -124,7 +127,6 @@ void initSwapMutex() {
 
   addr -= PAGESIZE;
 
-  pcb_PTR p;
   ssi_create_process_t create = {
       .state = &swapMutexState,
       .support = NULL,
@@ -134,16 +136,19 @@ void initSwapMutex() {
       .arg = &create,
   };
   SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
-  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &p, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &swapMutexProcess, 0);
   
-  swapMutexProcess = p;
 }
 
+/**
+ * Gestisce l'assegnazione della mutua esclusione
+ */
 void swapMutex() {
   while(TRUE) {
     unsigned int sender = SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
     mutexHolderProcess = (pcb_t *)sender;
     SYSCALL(SENDMESSAGE, (unsigned int)sender, 0, 0);
+    // Il processo che possiede la mutex si deve occupare di rilasciarla
     SYSCALL(RECEIVEMESSAGE, sender, 0, 0);
     mutexHolderProcess = NULL;
   }
