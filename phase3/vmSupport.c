@@ -39,7 +39,7 @@ void uTLB_RefillHandler() {
 /**
  * @brief Algoritmo di paging. Si occupa della gestione dei page fault.
  */
-void Pager() {
+void pager() {
     // Ritiro la struttura di supporto di current process dalla SSI
     support_t *support_PTR;
     ssi_payload_t payload = {

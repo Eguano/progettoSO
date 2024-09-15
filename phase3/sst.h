@@ -10,7 +10,6 @@
 #include "../headers/types.h"
 #include <umps/arch.h>
 
-support_t *getSupport();
 void SSTInitialize();
 void SSTHandler(int asid);
 void terminate(int asid);

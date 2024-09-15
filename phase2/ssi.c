@@ -173,13 +173,13 @@ static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
     // calcolo indirizzo di base
     termreg_t *base_address = (termreg_t *)DEV_REG_ADDR(TERMINT, dev);
     if (arg->commandAddr == (memaddr) & (base_address->recv_command)) {
-      // inizializzazione del campo aggiuntivo del pcb
+      // inserisco il processo nella rispettiva lista dei processi bloccati
       insertProcQ(&terminal_blocked_list[1][dev], toBlock);
       waiting_count++;
       *arg->commandAddr = arg->commandValue;
       return;
     } else if (arg->commandAddr == (memaddr) & (base_address->transm_command)) {
-      // inizializzazione del campo aggiuntivo del pcb
+      // inserisco il processo nella rispettiva lista dei processi bloccati
       insertProcQ(&terminal_blocked_list[0][dev], toBlock);
       waiting_count++;
       *arg->commandAddr = arg->commandValue;

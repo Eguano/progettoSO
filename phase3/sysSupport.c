@@ -2,7 +2,6 @@
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/msg.h"
 
-extern support_t *getSupport();
 extern pcb_PTR current_process;
 extern pcb_PTR ssi_pcb;
 extern pcb_PTR mutexHolderProcess;

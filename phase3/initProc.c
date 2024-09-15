@@ -4,9 +4,7 @@ extern pcb_PTR current_process;
 extern pcb_PTR ssi_pcb;
 extern void SSTInitialize();
 extern void supportExceptionHandler();
-extern void Pager();
-
-extern unsigned int debug;
+extern void pager();
 
 /**
  * Funzione di test per la fase 3
@@ -17,21 +15,24 @@ void test() {
   // spostamento oltre i processi ssi e test
   addr -= (3*PAGESIZE);
 
-  // swap pool
+  // Inizializzo swap pool
   initSwapPool();
 
+  // Inizializzo U-proc
   initUproc();
 
+  // Inizializzo processo mutex
   initSwapMutex();
 
+  // Inizializzo le SST
   initSST();
 
-  // aspetta 8 messaggi che segnalano la terminazione degli U-proc
+  // Aspetto gli 8 messaggi che segnalano la terminazione degli U-proc
   for (int i = 0; i < 8; i++) {
     SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
   }
-  debug = 0x123;
-  // terminazione del processo test
+
+  // Terminazione del processo test
   ssi_payload_t termPayload = {
     .service_code = TERMPROCESS,
     .arg = NULL,
@@ -39,7 +40,7 @@ void test() {
   SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &termPayload, 0);
   SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, 0, 0);
 
-  // se termina correttamente non dovrebbe mai arrivare qui
+  // Se termina correttamente non dovrebbe mai arrivare qui
   PANIC();
 }
 
@@ -58,7 +59,7 @@ static void initUproc() {
     supports[asid - 1].sup_asid = asid;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
-    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) Pager;
+    supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].pc = (memaddr) pager;
     addr -= PAGESIZE;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[GENERALEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
@@ -71,32 +72,28 @@ static void initUproc() {
 }
 
 /**
- * Inizializza la swap pool.
+ * Inizializza la swap pool
  */
 static void initSwapPool() {
-  // DEBUG:
-  // swap_pool[POOLSIZE] = (swpo_t *) FRAMEPOOLSTART;
   for (int i = 0; i < POOLSIZE; i++) {
     swap_pool[i].swpo_asid = NOPROC;
     swap_pool[i].swpo_page = -1;
-    // swap_pool[i].swpo_pte_ptr = NULL;
   }
 }
 
 /**
- * Inizializza e crea i processi SST con support
+ * Inizializza e crea i processi SST
  */
 static void initSST() {
-  // DEBUG: un solo processo inizialmente
   for (int asid = 1; asid <= 8; asid++) {
     // init state
     sstStates[asid - 1].reg_sp = (memaddr) addr;
     sstStates[asid - 1].pc_epc = (memaddr) SSTInitialize;
+    sstStates[asid - 1].reg_t9 = (memaddr) SSTInitialize;
     sstStates[asid - 1].status = ALLOFF | IEPON | IMON | TEBITON;
-    // sstStates[asid - 1].reg_t9 = (memaddr) SSTInitialize;
     sstStates[asid - 1].entry_hi = asid << ASIDSHIFT;
 
-    // create sst process
+    // Creo il processo facendo una richiesta alla SSI
     ssi_create_process_t create = {
       .state = &sstStates[asid - 1],
       .support = &supports[asid - 1],
@@ -112,13 +109,19 @@ static void initSST() {
   }
 }
 
+/**
+ * Inizializza una entry della Page Table
+ * 
+ * @param asid Identificatore del U-proc
+ * @param entry Puntatore alla entry da inizializzare
+ * @param idx Indice della entry
+ */
 static void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
   if (idx < 31)
     entry->pte_entryHI = KUSEG + (idx << VPNSHIFT) + (asid << ASIDSHIFT);
   else
-    entry->pte_entryHI = 0xBFFFF000 + (asid << ASIDSHIFT); // stack page
+    entry->pte_entryHI = 0xBFFFF000 + (asid << ASIDSHIFT); 
   entry->pte_entryLO = DIRTYON;
-
 }
 
 /**
@@ -131,6 +134,7 @@ static void initSwapMutex() {
 
   addr -= PAGESIZE;
 
+  // Creo il processo facendo una richiesta alla SSI
   ssi_create_process_t create = {
       .state = &swapMutexState,
       .support = NULL,

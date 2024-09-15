@@ -1,5 +1,5 @@
 /*
-  TLB exception handler (The Pager)
+  TLB exception handler (The pager)
 */
 
 #ifndef VMSUPPORT_H
@@ -11,7 +11,7 @@
 #include "../headers/types.h"
 
 void uTLB_RefillHandler();
-void Pager();
+void pager();
 static unsigned int selectFrame();
 void invalidateFrame(unsigned int frame, support_t *support_PTR);
 void updateTLB(pteEntry_t *entry);

@@ -32,9 +32,6 @@ state_t *currentState;
 unsigned int *stateCauseReg;
 
 
-// DEBUG:
-unsigned int debug;
-
 static void initialize();
 int isInDevicesLists(pcb_t *p);
 void copyRegisters(state_t *dest, state_t *src);

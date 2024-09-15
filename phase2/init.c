@@ -24,7 +24,8 @@ void main() {
   ssi_pcb = allocPcb();
   ssi_pcb->p_s.status |= IEPON | IMON;
   RAMTOP(ssi_pcb->p_s.reg_sp);
-  ssi_pcb->p_s.pc_epc = ssi_pcb->p_s.reg_t9 = (memaddr) SSIHandler;
+  ssi_pcb->p_s.pc_epc = (memaddr) SSIHandler;
+  ssi_pcb->p_s.reg_t9 = (memaddr) SSIHandler;
   insertProcQ(&ready_queue, ssi_pcb);
   process_count++;
 
