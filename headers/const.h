@@ -70,6 +70,7 @@
 /* Status register constants */
 #define ALLOFF      0x00000000
 #define USERPON     0x00000008
+#define KUCON       0x00000002
 #define IEPON       0x00000004
 #define IECON       0x00000001
 #define IMON        0x0000FF00
@@ -107,7 +108,7 @@
 #define GETPAGENO     0x3FFFF000
 #define GETSHAREFLAG  0xC0000000
 #define VPNSHIFT      12
-#define VPNMASK       0xFFFFF
+#define VPNMASK       0xFFFFF000
 #define ASIDSHIFT     6
 #define SHAREDSEGFLAG 30
 
@@ -178,6 +179,8 @@
 #define DISKPOOLSTART  (FLASHPOOLSTART + (DEVPERINT * PAGESIZE))
 #define FRAMEPOOLSTART (DISKPOOLSTART + (DEVPERINT * PAGESIZE))
 
+#define SWAP_POOL_AREA 0x20020000
+
 #define RAMTOP(T) ((T) = ((*((int *)RAMBASEADDR)) + (*((int *)RAMBASESIZE))))
 
 /*
@@ -229,6 +232,6 @@
 #define READY 1
 
 // Macro
-#define GET_DEV_REG(intLine, devNo) ((memaddr *)(START_DEVREG + ((intLine - 3)* 0x80) + (devNo * 0x10)))
+// #define GET_DEV_REG(intLine, devNo) ((memaddr *)(START_DEVREG + ((intLine - 3)* 0x80) + (devNo * 0x10)))
 
 #endif

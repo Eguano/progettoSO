@@ -8,6 +8,7 @@
 #include <umps/libumps.h>
 #include "../headers/const.h"
 #include "../headers/types.h"
+#include <umps/arch.h>
 
 void SSIHandler();
 static unsigned int createProcess(ssi_create_process_t *arg, pcb_t *sender);

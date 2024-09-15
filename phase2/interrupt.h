@@ -8,6 +8,7 @@
 #include <umps/libumps.h>
 #include "../headers/const.h"
 #include "../headers/types.h"
+#include <umps/arch.h>
 
 // types of interrupt
 unsigned int interruptConsts[] = { INTPROCINTERRUPT, LOCALTIMERINT, TIMERINTERRUPT, DISKINTERRUPT, FLASHINTERRUPT, NETWORKINTERRUPT, PRINTINTERRUPT, TERMINTERRUPT };

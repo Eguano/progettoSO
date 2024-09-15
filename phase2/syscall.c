@@ -17,9 +17,8 @@ extern void copyRegisters(state_t *dest, state_t *src);
  * Gestisce la richiesta di una system call send o receive
  */
 void syscallHandler() {
-    // valore mode bit
-    if (currentState->status & USERPON) {
-        // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
+    // Se sono in user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
+    if ((currentState->status & KUCON) >> 1) {
         currentState->cause &= CLEAREXECCODE;
         currentState->cause |= (PRIVINSTR << CAUSESHIFT);
         passUpOrDie(GENERALEXCEPT);
