@@ -10,7 +10,6 @@ extern struct list_head external_blocked_list[4][MAXDEV];
 extern struct list_head pseudoclock_blocked_list;
 extern struct list_head terminal_blocked_list[2][MAXDEV];
 extern void copyRegisters(state_t *dest, state_t *src);
-extern unsigned int debug;
 
 /**
  * Gestisce una richiesta ricevuta da un processo
@@ -169,12 +168,10 @@ void destroyProcess(pcb_t *p) {
  * @param toBlock processo da bloccare
  */
 static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
-  
-  debug = &arg->commandAddr;
   // ciclo for che itera fra i dispositvi terminali
-  for (int dev = 0; dev < 8; dev++) {
+  for (int dev = 0; dev < MAXDEV; dev++) {
     // calcolo indirizzo di base
-    termreg_t *base_address = (termreg_t *)DEV_REG_ADDR(7, dev);
+    termreg_t *base_address = (termreg_t *)DEV_REG_ADDR(TERMINT, dev);
     if (arg->commandAddr == (memaddr) & (base_address->recv_command)) {
       // inizializzazione del campo aggiuntivo del pcb
       insertProcQ(&terminal_blocked_list[1][dev], toBlock);
@@ -191,28 +188,10 @@ static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
   }
   // ciclo for che itera fra tutti gli altri dispositivi
   for (int line = 3; line < 7; line++) {
-    for (int dev = 0; dev < 8; dev++) {
+    for (int dev = 0; dev < MAXDEV; dev++) {
       dtpreg_t *base_address = (dtpreg_t *)DEV_REG_ADDR(line, dev);
       if (arg->commandAddr == (memaddr) & (base_address->command)) {
-        // inizializzazione del campo aggiuntivo del pcb
-        switch (line) {
-          case IL_DISK:
-            debug = 0x999;
-            insertProcQ(&external_blocked_list[line - 3][dev], toBlock); // Metto line - 3 per mappare le costanti al vettore
-            break;
-          case IL_FLASH:
-            debug = 0x998;
-            insertProcQ(&external_blocked_list[line - 3][dev], toBlock); // Metto line - 3 per mappare le costanti al vettore
-            break;
-          case IL_ETHERNET:
-            debug = 0x997;
-            insertProcQ(&external_blocked_list[line - 3][dev], toBlock); // Metto line - 3 per mappare le costanti al vettore
-            break;
-          case IL_PRINTER:
-            debug = 0x996;
-            insertProcQ(&external_blocked_list[line - 3][dev], toBlock); // Metto line - 3 per mappare le costanti al vettore
-            break;
-        }
+        insertProcQ(&external_blocked_list[line - 3][dev], toBlock); // Metto line - 3 per mappare le costanti al vettore
       }
     }
   }

@@ -70,6 +70,7 @@
 /* Status register constants */
 #define ALLOFF      0x00000000
 #define USERPON     0x00000008
+#define KUCON       0x00000002
 #define IEPON       0x00000004
 #define IECON       0x00000001
 #define IMON        0x0000FF00

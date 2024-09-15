@@ -12,15 +12,13 @@ extern state_t *currentState;
 extern void terminateProcess(pcb_t *proc);
 extern int isInDevicesLists(pcb_t *p);
 extern void copyRegisters(state_t *dest, state_t *src);
-extern unsigned int debug;
 
 /**
  * Gestisce la richiesta di una system call send o receive
  */
 void syscallHandler() {
-    // valore mode bit
-    if ((currentState->status << 30) >> 31) {
-        // Se user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
+    // Se sono in user mode allora setta cause.ExcCode a PRIVINSTR e invoca il gestore di Trap
+    if ((currentState->status & KUCON) >> 1) {
         currentState->cause &= CLEAREXECCODE;
         currentState->cause |= (PRIVINSTR << CAUSESHIFT);
         passUpOrDie(GENERALEXCEPT);
@@ -138,7 +136,6 @@ void passUpOrDie(int indexValue) {
         status = current_process->p_supportStruct->sup_exceptContext[indexValue].status;
         progCounter = current_process->p_supportStruct->sup_exceptContext[indexValue].pc;
 
-        debug = &current_process->p_supportStruct->sup_exceptState[indexValue];
         LDCXT(stackPtr, status, progCounter);
     }
     // Or die

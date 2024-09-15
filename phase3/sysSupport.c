@@ -8,14 +8,11 @@ extern pcb_PTR ssi_pcb;
 extern pcb_PTR mutexHolderProcess;
 extern pcb_PTR swapMutexProcess;
 
-extern unsigned int debug;
-
 /**
  * Gestisce le eccezioni a livello supporto
  */
 void supportExceptionHandler() {
-    debug = 0x200;
-    // Richiede la struttura di supporto
+    // Richiedo alla SSI la struttura di supporto del current process 
     support_t *supPtr;
     ssi_payload_t payload = {
     .service_code = GETSUPPORTPTR,
@@ -24,39 +21,45 @@ void supportExceptionHandler() {
     SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &supPtr, 0);
 
+    // Mi prendo lo stato del processore al momento dell'eccezione
     state_t *supExceptionState = &(supPtr->sup_exceptState[GENERALEXCEPT]);
-    debug = supPtr->sup_exceptState[GENERALEXCEPT].cause;
 
-    supExceptionState->pc_epc += WORDLEN;
-
+    // Estraggo l'EXECCODE
     int supExceptionCause = (supExceptionState->cause & GETEXECCODE) >> CAUSESHIFT;
 
+    // Se è uguale a 8 invoco il gestore di syscall
     if(supExceptionCause == SYSEXCEPTION) {
-        debug = 0x202;
         supportSyscallHandler(supExceptionState);
-
     }
+    // Altrimenti la considero come una program trap e procedo con la terminazione
     else {
-        debug = 0x203;
         supportTrapHandler(supExceptionState);
     }
 
+    // Incremento il PC di 4 per evitare un loop infinito
+    supExceptionState->pc_epc += WORDLEN;
+
+    // Ricarico il lo stato del processore 
     LDST(supExceptionState);
 }
 
 /**
  * @brief Gestisce le system call richieste dagli Uproc
  * 
- * @param supExceptionState 
+ * @param supExceptionState Stato del processore al momento dell'eccezione
  */
 void supportSyscallHandler(state_t *supExceptionState) {
+    // Da reg_a0 capisco il tipo di syscall
     switch(supExceptionState->reg_a0) {
+        // Se reg_a0 vale 1 allora è una sendMsg
         case SENDMSG:
             sendMsg(supExceptionState);
             break;
+        // Se reg_a0 vale 2 allora è una receiveMsg
         case RECEIVEMSG:
             receiveMsg(supExceptionState);
             break;
+        // per sicurezza aggiungo un ramo default che termina il processo ma non ci dovrebbe mai andare
         default:
             supportTrapHandler(supExceptionState);
             break;  
@@ -67,7 +70,7 @@ void supportSyscallHandler(state_t *supExceptionState) {
  * USYS1: Manda un messaggio ad uno specifico processo destinatario.
  * Se a1 contiene PARENT, allora manda il messaggio al suo SST
  * 
- * @param supExceptionState 
+ * @param supExceptionState Stato del processore al momento dell'eccezione
  */
 void sendMsg(state_t *supExceptionState) {
     if(supExceptionState->reg_a1 == PARENT) {
@@ -80,7 +83,7 @@ void sendMsg(state_t *supExceptionState) {
 /**
  * USYS2: Estrae un messaggio dalla inbox o, se questa è vuota, attende un messaggio
  * 
- * @param supExceptionState 
+ * @param supExceptionState Stato del processore al momento dell'eccezione
  */
 void receiveMsg(state_t *supExceptionState) {
     SYSCALL(RECEIVEMESSAGE, supExceptionState->reg_a1, supExceptionState->reg_a2, 0);
@@ -90,10 +93,10 @@ void receiveMsg(state_t *supExceptionState) {
 /**
  * Gestore delle trap a livello supporto
  * 
- * @param supExceptionState 
+ * @param supExceptionState Stato del processore al momento dell'eccezione
  */
 void supportTrapHandler(state_t *supExceptionState) {
-    // Se il processo aveva la mutua esclusione, allora la rilascia
+    // Se il processo aveva la mutua esclusione, allora la rilascia mandando un messaggio al processo swapMutex
     if(current_process == mutexHolderProcess)
         SYSCALL(SENDMESSAGE, (unsigned int)swapMutexProcess, 0, 0);   
 
@@ -102,7 +105,7 @@ void supportTrapHandler(state_t *supExceptionState) {
         .arg = NULL,
     };
 
-    // Termina il processo
+    // Termina il processo mandando una richiesta alla SSI
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int)(&term_process_payload), 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, 0, 0);
 }
