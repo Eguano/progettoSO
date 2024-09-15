@@ -5,8 +5,6 @@ extern pcb_PTR ssi_pcb;
 extern state_t uprocStates[UPROCMAX];
 extern swpo_t swap_pool[POOLSIZE];
 
-extern unsigned int debug;
-
 /**
  * Richiede all'SSI la struttura di supporto del processo SST
  * 
@@ -55,12 +53,10 @@ void SSTInitialize() {
  */
 void SSTHandler(int asid) {
   while (TRUE) {
-    debug = 0x300;
     ssi_payload_PTR p_payload = NULL;
     pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMSG, ANYMESSAGE, (unsigned int) &p_payload, 0);
     // risposta da inviare all'U-proc
     unsigned int response = 0;
-    debug = 0x301;
 
     // accoglimento richiesta
     switch(p_payload->service_code) {
@@ -85,7 +81,6 @@ void SSTHandler(int asid) {
         break;
     }
 
-    debug = 0x302;
     SYSCALL(SENDMSG, (unsigned int) sender, response, 0);
   }
 }
@@ -142,7 +137,6 @@ void writePrinter(int asid, sst_print_PTR arg) {
 
     // verifica la correttezza dell'operazione
     if (status != READY) {
-      debug = 0x7;
       PANIC();
     }
 
@@ -179,7 +173,6 @@ void writeTerminal(int asid, sst_print_PTR arg) {
 
     // controlla la correttezza dell'operazione
     if ((status & TERMSTATMASK) != RECVD) {
-      debug = 0x8;
       PANIC();
     }
 

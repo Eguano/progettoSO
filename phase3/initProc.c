@@ -6,8 +6,6 @@ extern void SSTInitialize();
 extern void supportExceptionHandler();
 extern void Pager();
 
-extern unsigned int debug;
-
 /**
  * Funzione di test per la fase 3
  */
@@ -27,7 +25,7 @@ void test() {
   initSST();
 
   // aspetta 8 messaggi che segnalano la terminazione degli U-proc
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < UPROCMAX; i++) {
     SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
   }
   // terminazione del processo test
@@ -43,16 +41,17 @@ void test() {
 }
 
 /**
- * Inizializza gli state di ogni U-proc
+ * Inizializza gli state e le strutture di supporto di ogni U-proc
  */
 void initUproc() {
   for (int asid = 1; asid <= UPROCMAX; asid++) {
+    // state
     uprocStates[asid - 1].pc_epc = uprocStates[asid - 1].reg_t9 = (memaddr) UPROCSTARTADDR;
     uprocStates[asid - 1].reg_sp = (memaddr) USERSTACKTOP;
     uprocStates[asid - 1].status = ALLOFF | USERPON | IEPON | IMON | TEBITON;
     uprocStates[asid - 1].entry_hi = asid << ASIDSHIFT;
 
-    // init support
+    // support
     supports[asid - 1].sup_asid = asid;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].stackPtr = (memaddr) addr;
     supports[asid - 1].sup_exceptContext[PGFAULTEXCEPT].status = ALLOFF | IEPON | IMON | TEBITON;
@@ -69,24 +68,20 @@ void initUproc() {
 }
 
 /**
- * Inizializza la swap pool.
+ * Inizializza la swap pool
  */
 void initSwapPool() {
-  // DEBUG:
-  // swap_pool[POOLSIZE] = (swpo_t *) FRAMEPOOLSTART;
   for (int i = 0; i < POOLSIZE; i++) {
     swap_pool[i].swpo_asid = NOPROC;
     swap_pool[i].swpo_page = -1;
-    // swap_pool[i].swpo_pte_ptr = NULL;
   }
 }
 
 /**
- * Inizializza e crea i processi SST con support
+ * Inizializza e crea i processi SST
  */
 void initSST() {
-  // DEBUG: un solo processo inizialmente
-  for (int asid = 1; asid <= 1; asid++) {
+  for (int asid = 1; asid <= UPROCMAX; asid++) {
     // init state
     sstStates[asid - 1].pc_epc = sstStates[asid - 1].reg_t9 = (memaddr) SSTInitialize;
     sstStates[asid - 1].reg_sp = (memaddr) addr;
@@ -108,25 +103,33 @@ void initSST() {
   }
 }
 
+/**
+ * Inizializza una singola entry della tabella delle pagine
+ * 
+ * @param asid asid del processo
+ * @param entry entry della tabella
+ * @param idx identificativo dell'entry
+ */
 void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx){
   if (idx < 31)
     entry->pte_entryHI = KUSEG + (idx << VPNSHIFT) + (asid << ASIDSHIFT);
   else
     entry->pte_entryHI = 0xBFFFF000 + (asid << ASIDSHIFT); // stack page
   entry->pte_entryLO = DIRTYON;
-
 }
 
 /**
  * Inizializza il processo swapMutex
  */
 void initSwapMutex() {
+  // state
   swapMutexState.reg_sp = (memaddr) addr;
   swapMutexState.pc_epc = swapMutexState.reg_t9 = (memaddr) swapMutex;
   swapMutexState.status = ALLOFF | IEPON | IMON | TEBITON;
 
   addr -= PAGESIZE;
 
+  // creazione
   ssi_create_process_t create = {
       .state = &swapMutexState,
       .support = NULL,
@@ -137,7 +140,6 @@ void initSwapMutex() {
   };
   SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
   SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &swapMutexProcess, 0);
-  
 }
 
 /**

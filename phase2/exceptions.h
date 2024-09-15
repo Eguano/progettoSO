@@ -9,7 +9,6 @@
 #include "../headers/const.h"
 #include "../headers/types.h"
 
-void uTLB_RefillHandler();
 void exceptionHandler();
 
 #endif

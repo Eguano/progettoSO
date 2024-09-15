@@ -33,10 +33,10 @@ swpo_t swap_pool[POOLSIZE];
 
 void test();
 void initUproc();
-void initSST();
 void initSwapPool();
+void initSST();
+void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx);
 void initSwapMutex();
 void swapMutex();
-void initPageTableEntry(unsigned int asid, pteEntry_t *entry, int idx);
 
 #endif
