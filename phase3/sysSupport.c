@@ -16,7 +16,14 @@ extern unsigned int debug;
 void supportExceptionHandler() {
     debug = 0x200;
     // Richiede la struttura di supporto
-    support_t *supPtr = getSupport();
+    support_t *supPtr;
+    ssi_payload_t payload = {
+    .service_code = GETSUPPORTPTR,
+    .arg = NULL,
+    };
+    SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &supPtr, 0);
+
     state_t *supExceptionState = &(supPtr->sup_exceptState[GENERALEXCEPT]);
     debug = supPtr->sup_exceptState[GENERALEXCEPT].cause;
 

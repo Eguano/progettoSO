@@ -8,6 +8,7 @@
 #include <umps/libumps.h>
 #include "../headers/const.h"
 #include "../headers/types.h"
+#include <umps/arch.h>
 
 support_t *getSupport();
 void SSTInitialize();

@@ -27,9 +27,10 @@ void test() {
   initSST();
 
   // aspetta 8 messaggi che segnalano la terminazione degli U-proc
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < 8; i++) {
     SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, 0, 0);
   }
+  debug = 0x123;
   // terminazione del processo test
   ssi_payload_t termPayload = {
     .service_code = TERMPROCESS,
@@ -46,8 +47,9 @@ void test() {
  * Inizializza gli state di ogni U-proc
  */
 static void initUproc() {
-  for (int asid = 1; asid <= UPROCMAX; asid++) {
-    uprocStates[asid - 1].pc_epc = uprocStates[asid - 1].reg_t9 = (memaddr) UPROCSTARTADDR;
+  for (int asid = 1; asid <= 8; asid++) {
+    uprocStates[asid - 1].pc_epc = (memaddr) UPROCSTARTADDR;
+    uprocStates[asid - 1].reg_t9 = (memaddr) UPROCSTARTADDR;
     uprocStates[asid - 1].reg_sp = (memaddr) USERSTACKTOP;
     uprocStates[asid - 1].status = ALLOFF | USERPON | IEPON | IMON | TEBITON;
     uprocStates[asid - 1].entry_hi = asid << ASIDSHIFT;
@@ -86,13 +88,13 @@ static void initSwapPool() {
  */
 static void initSST() {
   // DEBUG: un solo processo inizialmente
-  for (int asid = 1; asid <= 1; asid++) {
+  for (int asid = 1; asid <= 8; asid++) {
     // init state
-    sstStates[asid - 1].pc_epc = sstStates[asid - 1].reg_t9 = (memaddr) SSTInitialize;
     sstStates[asid - 1].reg_sp = (memaddr) addr;
+    sstStates[asid - 1].pc_epc = (memaddr) SSTInitialize;
     sstStates[asid - 1].status = ALLOFF | IEPON | IMON | TEBITON;
+    // sstStates[asid - 1].reg_t9 = (memaddr) SSTInitialize;
     sstStates[asid - 1].entry_hi = asid << ASIDSHIFT;
-    addr -= PAGESIZE;
 
     // create sst process
     ssi_create_process_t create = {
@@ -105,6 +107,8 @@ static void initSST() {
     };
     SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &createPayload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &sstArray[asid - 1], 0);
+    
+    addr -= PAGESIZE;
   }
 }
 

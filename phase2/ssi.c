@@ -170,6 +170,7 @@ void destroyProcess(pcb_t *p) {
  */
 static void blockForDevice(ssi_do_io_t *arg, pcb_t *toBlock) {
   
+  debug = &arg->commandAddr;
   // ciclo for che itera fra i dispositvi terminali
   for (int dev = 0; dev < 8; dev++) {
     // calcolo indirizzo di base

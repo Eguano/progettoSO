@@ -31,7 +31,14 @@ support_t *getSupport() {
 void SSTInitialize() {
   // child initialization
   // richiede la struttura di supporto
-  support_t *sup = getSupport();
+  support_t *sup;
+  ssi_payload_t payload_sup= {
+  .service_code = GETSUPPORTPTR,
+  .arg = NULL,
+  };
+  SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload_sup, 0);
+  SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &sup, 0);
+
   // crea U-proc figlio
   pcb_PTR p;
   ssi_create_process_t createProcess = {
@@ -57,7 +64,7 @@ void SSTHandler(int asid) {
   while (TRUE) {
     debug = 0x300;
     ssi_payload_PTR p_payload = NULL;
-    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMSG, ANYMESSAGE, (unsigned int) &p_payload, 0);
+    pcb_PTR sender = (pcb_PTR) SYSCALL(RECEIVEMESSAGE, ANYMESSAGE, (unsigned int) &p_payload, 0);
     // risposta da inviare all'U-proc
     unsigned int response = 0;
     debug = 0x301;
@@ -86,7 +93,7 @@ void SSTHandler(int asid) {
     }
 
     debug = 0x302;
-    SYSCALL(SENDMSG, (unsigned int) sender, response, 0);
+    SYSCALL(SENDMESSAGE, (unsigned int) sender, response, 0);
   }
 }
 
@@ -119,9 +126,8 @@ void terminate(int asid) {
  */
 void writePrinter(int asid, sst_print_PTR arg) {
   // individua l'istanza di printer su cui scrivere
-  unsigned int *base = (unsigned int *) PRINTER0ADDR + 4*(asid - 1);
-  unsigned int *command = base + 0x4;
-  unsigned int *data0 = base + 0x8;
+  dtpreg_t *base = (dtpreg_t *)DEV_REG_ADDR(PRNTINT, asid - 1);
+  unsigned int *data0 = &base->data0;
   unsigned int status;
   // stringa da printare
   char *s = arg->string;
@@ -130,7 +136,7 @@ void writePrinter(int asid, sst_print_PTR arg) {
     unsigned int value = PRINTCHR;
     *data0 = (unsigned int) *s;
     ssi_do_io_t doIO = {
-      .commandAddr = command,
+      .commandAddr = &base->command,
       .commandValue = value,
     };
     ssi_payload_t ioPayload = {
@@ -158,8 +164,7 @@ void writePrinter(int asid, sst_print_PTR arg) {
  */
 void writeTerminal(int asid, sst_print_PTR arg) {
   // individua l'istanza di terminal su cui scrivere
-  unsigned int *base = (unsigned int *) TERM0ADDR + 4*(asid - 1);
-  unsigned int *command = base + 0xc;
+  termreg_t *base = (termreg_t *)DEV_REG_ADDR(TERMINT, asid - 1);
   unsigned int status;
   // stringa da printare
   char *s = arg->string;
@@ -167,13 +172,14 @@ void writeTerminal(int asid, sst_print_PTR arg) {
   while (*s != EOS) {
     unsigned int value = PRINTCHR | (((unsigned int) *s) << 8);
     ssi_do_io_t doIO = {
-      .commandAddr = command,
+      .commandAddr = &base->transm_command,
       .commandValue = value,
     };
     ssi_payload_t ioPayload = {
       .service_code = DOIO,
       .arg = &doIO,
     };
+    debug = &doIO.commandAddr;
     SYSCALL(SENDMESSAGE, (unsigned int)ssi_pcb, (unsigned int) &ioPayload, 0);
     SYSCALL(RECEIVEMESSAGE, (unsigned int)ssi_pcb, (unsigned int) &status, 0);
 

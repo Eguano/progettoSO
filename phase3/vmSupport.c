@@ -43,7 +43,13 @@ void Pager() {
     debug = 0x100;
 
     // Ritiro la struttura di supporto di current process dalla SSI
-    support_t *support_PTR = getSupport();
+    support_t *support_PTR;
+    ssi_payload_t payload = {
+    .service_code = GETSUPPORTPTR,
+    .arg = NULL,
+    };
+    SYSCALL(SENDMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &payload, 0);
+    SYSCALL(RECEIVEMESSAGE, (unsigned int) ssi_pcb, (unsigned int) &support_PTR, 0);
     debug = 0x101;
 
     int exceptCause = support_PTR->sup_exceptState[PGFAULTEXCEPT].cause;

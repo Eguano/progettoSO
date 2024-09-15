@@ -8,6 +8,7 @@
     "exceptions.h": "c",
     "ssi.h": "c",
     "interrupt.h": "c",
-    "vmsupport.h": "c"
+    "vmsupport.h": "c",
+    "sst.h": "c"
   }
 }
